@@ -6,7 +6,7 @@ in vec2 TexCoords;
 
 uniform sampler2D texture1;
 
-uniform bool bStencil;
+uniform bool bStencil = false;
 
 void main()
 {   
