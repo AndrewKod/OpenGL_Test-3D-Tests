@@ -1,8 +1,11 @@
-﻿  Camera.cpp
-  Shader.cpp
-  Source.cpp
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp : warning C4821: Unable to determine Unicode encoding type, please save the file with signature (BOM)
-  Generating Code...
-C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\VC\VCTargets\Microsoft.CppCommon.targets(423,5): warning MSB8015: All source files are not up-to-date:  forcing a rebuild of all source files due to the contents of 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\OpenGL_Test\Debug\OpenGL_Test.tlog\CL.command.1.tlog' being invalid.
-MSVCRTD.lib(exe_main.obj) : error LNK2019: unresolved external symbol _main referenced in function "int __cdecl invoke_main(void)" (?invoke_main@@YAHXZ)
-E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\OpenGL_Test.exe : fatal error LNK1120: 1 unresolved externals
+﻿  Source.cpp
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\shader.h(58): warning C4101: 'e': unreferenced local variable
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(233): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(340): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(341): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(345): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(346): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(348): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(349): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(358): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+  OpenGL_Test.vcxproj -> E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\OpenGL_Test.exe
