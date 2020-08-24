@@ -33,14 +33,23 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+glm::mat4 postProcModel(1.0f);
+glm::vec3 postProcPosition(-0.000f, 0.0f, -0.0f);
+GLfloat postProcInitSize = 1.0f;
+GLfloat postProcInitScale = 1.0f;
+GLfloat postProcScale = postProcInitScale;
+GLfloat postProcScaleDelta = 0.0001f;
+
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
 
 void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vector<glm::vec3>& positions, bool bSortPositions);
 
-void DrawScene(Shader & shader, GLuint VAO, GLuint texture);
+void DrawScene(Shader & shader, GLuint cubeVAO, GLuint planeVAO, GLuint cubeTexture, GLuint floorTexture);
 
 void DrawPostProc(Shader & shader, GLuint VAO, GLuint texture);
+
+void ScalePostProc();
 
 int main()
 {
@@ -83,6 +92,7 @@ int main()
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
+	glEnable(GL_STENCIL_TEST);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_FRONT);
 	glFrontFace(GL_CCW);
@@ -153,12 +163,12 @@ int main()
 	//have to be written in CW order
     float postProcVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
         // positions   // texCoords
-        -1.0f, -1.0f,  0.0f, 0.0f,
-		-1.0f,  1.0f,  0.0f, 1.0f,        
-         1.0f, -1.0f,  1.0f, 0.0f,
+        -0.0f, -0.0f,  0.0f, 0.0f,
+		-0.0f,  1.0f,  0.0f, 1.0f,        
+         1.0f, -0.0f,  1.0f, 0.0f,
 
-         1.0f, -1.0f,  1.0f, 0.0f,
-		-1.0f,  1.0f,  0.0f, 1.0f,         
+         1.0f, -0.0f,  1.0f, 0.0f,
+		-0.0f,  1.0f,  0.0f, 1.0f,         
          1.0f,  1.0f,  1.0f, 1.0f
     };
     // cube VAO
@@ -249,74 +259,27 @@ int main()
         // -----
         processInput(window);
 
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		DrawScene(shader, cubeVAO, planeVAO, cubeTexture, floorTexture);
 
         // render
         // ------
         // bind to framebuffer and draw scene as we normally would to color texture 
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-        glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);				
 
-		
-		glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
-
-        // make sure we clear the framebuffer's content
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-        shader.UseProgram();
-		
-        glm::mat4 model = glm::mat4(1.0f);
-        glm::mat4 view = camera.GetViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        shader.SetMat4("view", view);
-        shader.SetMat4("projection", projection);
-
-		shader.SetBool("bStencil", false);
-
-		glStencilMask(0x00);
-		// floor
-		DrawFloor(shader, planeVAO, floorTexture);		
-		//grass
-
-
-		// 1st. render pass, draw objects as normal, writing to the stencil buffer
-	    // --------------------------------------------------------------------
-		glStencilFunc(GL_ALWAYS, 1, 0xFF);
-		glStencilMask(0xFF);
-        // cubes
-		DrawCubes(shader, cubeVAO, cubeTexture);
-       
-		// 2nd. render pass: now draw slightly scaled versions of the objects, this time disabling stencil writing.
-		// Because the stencil buffer is now filled with several 1s. The parts of the buffer that are 1 are not drawn,
-		// thus only drawing the objects' size differences, making it look like borders.
-		// -----------------------------------------------------------------------------------------------------------------------------
-		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-		glStencilMask(0x00);
-		glDisable(GL_DEPTH_TEST);
-		
-		float scale = 1.03f;
-
-		// cubes
-		DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true);
-
-		glStencilMask(0xFF);
-		glStencilFunc(GL_ALWAYS, 0, 0xFF);
-		glEnable(GL_DEPTH_TEST);
-		
-
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		DrawScene(shader, cubeVAO, planeVAO, cubeTexture, floorTexture);
 
         // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
         // clear all relevant buffers
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
-        glClear(GL_COLOR_BUFFER_BIT);
+        //glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+        //glClear(GL_COLOR_BUFFER_BIT);
 
-		postProcShader.UseProgram();
-        glBindVertexArray(postProcVAO);
-        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -340,6 +303,66 @@ int main()
     return 0;
 }
 
+void DrawScene(Shader & shader, GLuint cubeVAO, GLuint planeVAO, GLuint cubeTexture, GLuint floorTexture)
+{
+	glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
+
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+
+
+	shader.UseProgram();
+
+	glm::mat4 model = glm::mat4(1.0f);
+	glm::mat4 view = camera.GetViewMatrix();
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+	shader.SetMat4("view", view);
+	shader.SetMat4("projection", projection);
+
+	shader.SetBool("bStencil", false);
+
+	glStencilMask(0x00);
+	// floor
+	DrawFloor(shader, planeVAO, floorTexture);
+	//grass
+
+
+	// 1st. render pass, draw objects as normal, writing to the stencil buffer
+	// --------------------------------------------------------------------
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glStencilMask(0xFF);
+	// cubes
+	DrawCubes(shader, cubeVAO, cubeTexture);
+
+	// 2nd. render pass: now draw slightly scaled versions of the objects, this time disabling stencil writing.
+	// Because the stencil buffer is now filled with several 1s. The parts of the buffer that are 1 are not drawn,
+	// thus only drawing the objects' size differences, making it look like borders.
+	// -----------------------------------------------------------------------------------------------------------------------------
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	glStencilMask(0x00);
+	glDisable(GL_DEPTH_TEST);
+
+	float scale = 1.03f;
+
+	// cubes
+	DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true);
+
+	glStencilMask(0xFF);
+	glStencilFunc(GL_ALWAYS, 0, 0xFF);
+	glEnable(GL_DEPTH_TEST);
+
+}
+
+void ScalePostProc()
+{
+	postProcModel = glm::mat4(1.0f);
+
+	GLfloat newSize = postProcInitSize * postProcScale;
+	GLfloat offset = postProcInitSize - newSize;
+
+	postProcModel = glm::translate(postProcModel, glm::vec3(offset, offset, -0.0f));
+	postProcModel = glm::scale(postProcModel, glm::vec3(postProcScale));
+}
+
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
@@ -355,6 +378,19 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
+
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)//increase
+	{
+		postProcScale += postProcScaleDelta;
+		postProcScale = glm::clamp(postProcScale, 0.3f, 2.0f);
+		ScalePostProc();
+	}
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)//decrease
+	{
+		postProcScale -= postProcScaleDelta;
+		postProcScale = glm::clamp(postProcScale, 0.3f, 2.0f);
+		ScalePostProc();
+	}
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -461,6 +497,21 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
 
 	glBindTexture(GL_TEXTURE_2D, texture);
 	shader.SetMat4("model", glm::mat4(1.0f));
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glBindVertexArray(0);
+}
+
+void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureColorbuffer)
+{
+	postProcShader.UseProgram();
+
+	glBindVertexArray(postProcVAO);
+
+	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
+	
+	postProcShader.SetMat4("model", postProcModel);
+
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glBindVertexArray(0);
