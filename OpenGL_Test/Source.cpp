@@ -40,11 +40,20 @@ GLfloat postProcInitScale = 1.0f;
 GLfloat postProcScale = postProcInitScale;
 GLfloat postProcScaleDelta = 0.0001f;
 
+//bottom sobel effect
 float kernel[9] = {
 	-1, -2, -1,
 	 0,  0,  0,
 	 1,  2,  1
 };
+
+float kernelDegrees[9] = {
+	 135,  90,   45,
+	 180,  0,    0,
+	 225,  270,  315
+};
+
+float kernelAngle = 90;
 
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
@@ -524,7 +533,14 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 		glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
 		postProcShader.SetVec2("uvOffset", uvOffset);
 
+		//applying rotating sobel effect
+		GLfloat degrees = (GLint)glfwGetTime() % 360;
 
+		for (int i = 0; i < 9; i++)
+		{
+
+		}
+		
 	}
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
