@@ -53,7 +53,7 @@ float kernelDegrees[9] = {
 	 225,  270,  315
 };
 
-float kernelAngle = 90;
+float kernelAngle = 45;
 
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
@@ -536,8 +536,9 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 		//applying rotating sobel effect
 		GLfloat degrees = (GLint)glfwGetTime() % 360;
 
-		for (int i = 0; i < 9; i++)
+		for (int i = 0; i != 4 || i < 9; i++)
 		{
+			float deltaDegrees = kernelDegrees[i] - degrees;
 
 		}
 		
