@@ -40,6 +40,12 @@ GLfloat postProcInitScale = 1.0f;
 GLfloat postProcScale = postProcInitScale;
 GLfloat postProcScaleDelta = 0.0001f;
 
+float kernel[9] = {
+	-1, -2, -1,
+	 0,  0,  0,
+	 1,  2,  1
+};
+
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
 
@@ -47,7 +53,7 @@ void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vec
 
 void DrawScene(Shader & shader, GLuint cubeVAO, GLuint planeVAO, GLuint cubeTexture, GLuint floorTexture);
 
-void DrawPostProc(Shader & shader, GLuint VAO, GLuint texture);
+void DrawPostProc(Shader & shader, GLuint VAO, GLuint texture, bool bUseKernel = false);
 
 void ScalePostProc();
 
@@ -502,7 +508,7 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
 	glBindVertexArray(0);
 }
 
-void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureColorbuffer)
+void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureColorbuffer, bool bUseKernel)
 {
 	postProcShader.UseProgram();
 
@@ -511,6 +517,15 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
 	
 	postProcShader.SetMat4("model", postProcModel);
+	postProcShader.SetBool("bUseKernel", bUseKernel);
+
+	if (bUseKernel)
+	{
+		glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
+		postProcShader.SetVec2("uvOffset", uvOffset);
+
+
+	}
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 

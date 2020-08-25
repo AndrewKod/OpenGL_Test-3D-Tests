@@ -5,14 +5,14 @@ in vec2 TexCoords;
 
 uniform sampler2D screenTexture;
 
-uniform bool bPostProc;
+uniform bool bUseKernel;
 uniform float kernel[9];
 uniform vec2 uvOffset;
 
 void main()
 { 
 	vec4 col = vec4(0.0);
-	if(!bPostProc)
+	if(!bUseKernel)
 		col = texture(screenTexture, TexCoords);
 	else
 	{	
