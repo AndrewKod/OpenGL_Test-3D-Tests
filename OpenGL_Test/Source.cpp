@@ -34,6 +34,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 glm::mat4 postProcModel(1.0f);
+GLboolean bPPModelChanged = false;
 glm::vec3 postProcPosition(-0.000f, 0.0f, -0.0f);
 GLfloat postProcInitSize = 1.0f;
 GLfloat postProcInitScale = 1.0f;
@@ -53,7 +54,8 @@ float kernelDegrees[9] = {
 	 225,  270,  315
 };
 
-float kernelAngle = 45;
+GLfloat kernelAngle = 45.f;
+GLfloat kernelTreshold = kernelAngle/2.f;
 
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
@@ -257,6 +259,13 @@ int main()
         cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	GLboolean bUseKernel = true;
+	postProcShader.SetBool("bUseKernel", bUseKernel);
+		
+	glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
+	postProcShader.SetVec2("uvOffset", uvOffset);
+
+
     // draw as wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -294,7 +303,9 @@ int main()
         //glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
         //glClear(GL_COLOR_BUFFER_BIT);
 
-		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer);
+		
+
+		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, bUseKernel);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -399,12 +410,14 @@ void processInput(GLFWwindow *window)
 		postProcScale += postProcScaleDelta;
 		postProcScale = glm::clamp(postProcScale, 0.3f, 2.0f);
 		ScalePostProc();
+		bPPModelChanged = true;
 	}
 	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)//decrease
 	{
 		postProcScale -= postProcScaleDelta;
 		postProcScale = glm::clamp(postProcScale, 0.3f, 2.0f);
 		ScalePostProc();
+		bPPModelChanged = true;
 	}
 }
 
@@ -525,21 +538,24 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
 	
-	postProcShader.SetMat4("model", postProcModel);
-	postProcShader.SetBool("bUseKernel", bUseKernel);
-
+	if (bPPModelChanged)
+	{
+		postProcShader.SetMat4("model", postProcModel);
+		bPPModelChanged = false;
+	}
+	
 	if (bUseKernel)
 	{
-		glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
-		postProcShader.SetVec2("uvOffset", uvOffset);
-
 		//applying rotating sobel effect
 		GLfloat degrees = (GLint)glfwGetTime() % 360;
 
 		for (int i = 0; i != 4 || i < 9; i++)
 		{
 			float deltaDegrees = kernelDegrees[i] - degrees;
+			if (abs(deltaDegrees) <= kernelTreshold)
+			{
 
+			}
 		}
 		
 	}
