@@ -41,21 +41,45 @@ GLfloat postProcInitScale = 1.0f;
 GLfloat postProcScale = postProcInitScale;
 GLfloat postProcScaleDelta = 0.0001f;
 
+GLfloat kernelAngle = 45.f;
+GLfloat kernelTreshold = kernelAngle/2.f;
+
+const GLint kernelSize = 9;
+const GLint anglesSize = 8;
+
 //bottom sobel effect
-float kernel[9] = {
+GLfloat kernel[kernelSize] = {
 	-1, -2, -1,
 	 0,  0,  0,
 	 1,  2,  1
 };
 
-float kernelDegrees[9] = {
-	 135,  90,   45,
-	 180,  0,    0,
-	 225,  270,  315
+GLfloat a = kernelTreshold;
+GLfloat b = kernelAngle;
+
+
+GLfloat kernelAngles[anglesSize] = {
+	 0,
+	 45,
+	 90,
+	 135,
+	 180,
+	 225,
+	 270,
+	 315
+};
+GLfloat kernelSectors[anglesSize] = {
+	 a,
+	 a + b,
+	 a + b * 2,
+	 a + b * 3,
+	 a + b * 4,
+	 a + b * 5,
+	 a + b * 6,
+	 a + b * 7
 };
 
-GLfloat kernelAngle = 45.f;
-GLfloat kernelTreshold = kernelAngle/2.f;
+
 
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
@@ -546,17 +570,24 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 	
 	if (bUseKernel)
 	{
-		//applying rotating sobel effect
-		GLfloat degrees = (GLint)glfwGetTime() % 360;
+		//Applying rotating sobel effect
 
-		for (int i = 0; i != 4 || i < 9; i++)
-		{
-			float deltaDegrees = kernelDegrees[i] - degrees;
-			if (abs(deltaDegrees) <= kernelTreshold)
-			{
+		//Sobel kernel is 3x3 sized
+		//and we are calculating values of it's cells (excluding central) 
+		//depending on angle calculated further.
+		//Each cell matches with defined sector
 
-			}
-		}
+
+		GLfloat angle = (GLint)(glfwGetTime() * 100.f) % 360;
+		
+		angle = 359.f;
+		GLint sectorID = 0;
+		if (angle < kernelTreshold)
+			sectorID = 0;
+		else
+			sectorID = ((GLint)((angle - kernelTreshold) / kernelAngle) + 1) % anglesSize;
+
+		GLfloat offset = angle - kernelAngles[sectorID];
 		
 	}
 
