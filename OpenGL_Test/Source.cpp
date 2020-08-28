@@ -90,7 +90,6 @@ GLint sectorsToCells[sectorsSize] = {
 	 8
 };
 
-GLboolean freeCells[kernelSize];
 
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
@@ -100,8 +99,8 @@ void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vec
 void DrawScene(Shader & shader, GLuint cubeVAO, GLuint planeVAO, GLuint cubeTexture, GLuint floorTexture);
 
 void DrawPostProc(Shader & shader, GLuint VAO, GLuint texture, bool bUseKernel = false);
-void ResetFreeCells();
 void SetKernelValue(Shader & postProcShader, GLint cellID);
+void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLint sectorID);
 
 void ScalePostProc();
 
@@ -570,20 +569,23 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
 	glBindVertexArray(0);
 }
 
-void ResetFreeCells()
-{
-	for (int i = 0; i < kernelSize; i++)
-	{
-		freeCells[i] = true;
-	}
-}
-
 void SetKernelValue(Shader & postProcShader, GLint cellID)
 {
 	char num[2];
 	_itoa_s(cellID, num, 10);
 
 	postProcShader.SetFloat(std::string("kernel[") + num + string("]"), kernel[cellID]);
+}
+
+void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLint sectorID)
+{
+	kernel[cellID] = cellValue;
+	//set opposite cell value
+	GLint oppositeId = sectorsToCells[(sectorID + 4) % sectorsSize];
+	kernel[oppositeId] = -cellValue;	
+
+	SetKernelValue(postProcShader, cellID);
+	SetKernelValue(postProcShader, oppositeId);
 }
 
 void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureColorbuffer, bool bUseKernel)
@@ -602,7 +604,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 	
 	if (bUseKernel)
 	{
-		ResetFreeCells();
+		
 
 		//Applying rotating sobel effect
 
@@ -613,9 +615,9 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 
 		
 
-		GLfloat angle = (GLint)(glfwGetTime() * 10.f) % 360;
+		GLfloat angle = (GLint)(glfwGetTime() * 100.f) % 360;
 		
-		angle = 0.f;
+		//angle = 0.f;
 
 		GLint sectorID = 0;
 		//handle 0 sector because it's between 337.5 and 22.5 degrees in CCW order
@@ -623,6 +625,9 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 			sectorID = 0;
 		else
 			sectorID = ((GLint)((angle - kernelTreshold) / kernelAngle) + 1) % sectorsSize;
+		GLint leftSectorID = (sectorsSize + sectorID + 1) % sectorsSize;
+		GLint leftleftSectorID = (sectorsSize + sectorID + 2) % sectorsSize;
+		GLint rightSectorID = (sectorsSize + sectorID - 1) % sectorsSize;
 
 		GLfloat offset = 0.f;
 		//handle 0 sector
@@ -631,9 +636,9 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 		else
 			offset = angle - kernelAngles[sectorID];
 
-		GLfloat delta = 0.5f *(abs(offset) / kernelTreshold);
+		GLfloat delta = 0.5f * ((offset) / kernelTreshold);
 
-		GLfloat midCellValue = 2.f - delta;
+		GLfloat midCellValue = 2.f - abs(delta);
 		GLfloat leftCellValue = 1.f + delta;
 		GLfloat leftleftCellValue = delta;
 		GLfloat rightCellValue = 1.f - delta;
@@ -645,40 +650,22 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 
 			if (i == sectorsToCells[sectorID])//mid cell value
 			{
-				kernel[i] = midCellValue;
-				//set opposite cell value
-				GLint oppositeId = sectorsToCells[(sectorID + 4) % sectorsSize];
-				kernel[oppositeId] = -midCellValue;
-				
-				freeCells[i] = false;
-				freeCells[oppositeId] = false;
-
-				SetKernelValue(postProcShader, i);
-				SetKernelValue(postProcShader, oppositeId);
+				SetCellValue(postProcShader, i, midCellValue, sectorID);
 			}
-			else if (i == sectorsToCells[(sectorID + 1) % sectorsSize])//left cell value
+			else if (i == sectorsToCells[leftSectorID])//left cell value
 			{
-
+				SetCellValue(postProcShader, i, leftCellValue, leftSectorID);
 			}
-			else if (i == sectorsToCells[(sectorID + 2) % sectorsSize])//left left cell value
+			else if (i == sectorsToCells[leftleftSectorID])//left left cell value
 			{
-
+				SetCellValue(postProcShader, i, leftleftCellValue, leftleftSectorID);
 			}
-			else if (i == sectorsToCells[(sectorID - 1) % sectorsSize])//right cell value
+			else if (i == sectorsToCells[rightSectorID])//right cell value
 			{
+				SetCellValue(postProcShader, i, rightCellValue, rightSectorID);
+			}	
 
-			}
 			
-			/*else if (freeCells[i])
-			{
-				kernel[i] = 0.f;
-				SetKernelValue(postProcShader, i);
-			}*/
-
-			char num[2];
-			_itoa_s(i, num, 10);
-
-			postProcShader.SetFloat(std::string("kernel[") + num + string("]"), kernel[i]);
 		}
 
 	}
