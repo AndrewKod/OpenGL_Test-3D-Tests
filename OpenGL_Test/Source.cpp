@@ -299,6 +299,9 @@ int main()
 	glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
 	postProcShader.SetVec2("uvOffset", uvOffset);
 
+	//set model for first time 
+	//and update it then if necessary 
+	postProcShader.SetMat4("model", postProcModel);
 
     // draw as wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -588,7 +591,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 		//Each cell matches with defined sector
 
 
-		GLfloat angle = (GLint)(glfwGetTime() * 100.f) % 360;
+		GLfloat angle = (GLint)(glfwGetTime() * 10.f) % 360;
 		
 		//angle = 359.f;
 
@@ -604,7 +607,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 		else
 			offset = angle - kernelAngles[sectorID];
 
-		GLfloat cellValue = 2.f * (abs(offset) / kernelTreshold);
+		GLfloat cellValue = 2.f * (1.f - abs(offset) / kernelTreshold);
 
 		for (int i = 0; i < kernelSize; i++)
 		{
