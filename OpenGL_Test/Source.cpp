@@ -45,7 +45,7 @@ GLfloat kernelAngle = 45.f;
 GLfloat kernelTreshold = kernelAngle/2.f;
 
 const GLint kernelSize = 9;
-const GLint anglesSize = 8;
+const GLint sectorsSize = 8;
 
 //bottom sobel effect
 GLfloat kernel[kernelSize] = {
@@ -58,7 +58,7 @@ GLfloat a = kernelTreshold;
 GLfloat b = kernelAngle;
 
 
-GLfloat kernelAngles[anglesSize] = {
+GLfloat kernelAngles[sectorsSize] = {
 	 0,
 	 45,
 	 90,
@@ -68,7 +68,7 @@ GLfloat kernelAngles[anglesSize] = {
 	 270,
 	 315
 };
-GLfloat kernelSectors[anglesSize] = {
+GLfloat kernelSectors[sectorsSize] = {
 	 a,
 	 a + b,
 	 a + b * 2,
@@ -79,7 +79,7 @@ GLfloat kernelSectors[anglesSize] = {
 	 a + b * 7
 };
 
-GLint sectorsToCells[anglesSize] = {
+GLint sectorsToCells[sectorsSize] = {
 	 5,
 	 2,
 	 1,
@@ -90,6 +90,7 @@ GLint sectorsToCells[anglesSize] = {
 	 8
 };
 
+GLboolean freeCells[kernelSize];
 
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
@@ -99,6 +100,8 @@ void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vec
 void DrawScene(Shader & shader, GLuint cubeVAO, GLuint planeVAO, GLuint cubeTexture, GLuint floorTexture);
 
 void DrawPostProc(Shader & shader, GLuint VAO, GLuint texture, bool bUseKernel = false);
+void ResetFreeCells();
+void SetKernelValue(Shader & postProcShader, GLint cellID);
 
 void ScalePostProc();
 
@@ -567,6 +570,22 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
 	glBindVertexArray(0);
 }
 
+void ResetFreeCells()
+{
+	for (int i = 0; i < kernelSize; i++)
+	{
+		freeCells[i] = true;
+	}
+}
+
+void SetKernelValue(Shader & postProcShader, GLint cellID)
+{
+	char num[2];
+	_itoa_s(cellID, num, 10);
+
+	postProcShader.SetFloat(std::string("kernel[") + num + string("]"), kernel[cellID]);
+}
+
 void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureColorbuffer, bool bUseKernel)
 {
 	postProcShader.UseProgram();
@@ -583,6 +602,8 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 	
 	if (bUseKernel)
 	{
+		ResetFreeCells();
+
 		//Applying rotating sobel effect
 
 		//Sobel kernel is 3x3 sized
@@ -590,6 +611,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 		//depending on angle calculated further.
 		//Each cell matches with defined sector
 
+		
 
 		GLfloat angle = (GLint)(glfwGetTime() * 10.f) % 360;
 		
@@ -599,7 +621,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 		if (angle < kernelTreshold)
 			sectorID = 0;
 		else
-			sectorID = ((GLint)((angle - kernelTreshold) / kernelAngle) + 1) % anglesSize;
+			sectorID = ((GLint)((angle - kernelTreshold) / kernelAngle) + 1) % sectorsSize;
 
 		GLfloat offset = 0.f;
 		if(angle > 360.f - kernelTreshold)
@@ -614,10 +636,32 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 			if (i == 4)
 				continue;
 
-			if (i == sectorsToCells[sectorID])
+			if (i == sectorsToCells[sectorID])//mid cell value
+			{
 				kernel[i] = cellValue;
-			else
+				//set opposite cell value
+				GLint oppositeId = sectorsToCells[(sectorID + 4) % sectorsSize];
+				kernel[oppositeId] = -cellValue;
+				
+				freeCells[i] = false;
+				freeCells[oppositeId] = false;
+
+				SetKernelValue(postProcShader, i);
+				SetKernelValue(postProcShader, oppositeId);
+			}
+			else if (i == sectorsToCells[(sectorID + 1) % sectorsSize])//left cell value
+			{
+
+			}
+			else if (i == sectorsToCells[(sectorID - 1) % sectorsSize])//right cell value
+			{
+
+			}
+			else if (freeCells[i])
+			{
 				kernel[i] = 0.f;
+				SetKernelValue(postProcShader, i);
+			}
 
 			char num[2];
 			_itoa_s(i, num, 10);
