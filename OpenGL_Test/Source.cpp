@@ -615,22 +615,29 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 
 		GLfloat angle = (GLint)(glfwGetTime() * 10.f) % 360;
 		
-		//angle = 359.f;
+		angle = 0.f;
 
 		GLint sectorID = 0;
+		//handle 0 sector because it's between 337.5 and 22.5 degrees in CCW order
 		if (angle < kernelTreshold)
 			sectorID = 0;
 		else
 			sectorID = ((GLint)((angle - kernelTreshold) / kernelAngle) + 1) % sectorsSize;
 
 		GLfloat offset = 0.f;
+		//handle 0 sector
 		if(angle > 360.f - kernelTreshold)
-			offset = 360.f - angle;
+			offset = angle - 360.f;
 		else
 			offset = angle - kernelAngles[sectorID];
 
-		GLfloat cellValue = 2.f * (1.f - abs(offset) / kernelTreshold);
+		GLfloat delta = 0.5f *(abs(offset) / kernelTreshold);
 
+		GLfloat midCellValue = 2.f - delta;
+		GLfloat leftCellValue = 1.f + delta;
+		GLfloat leftleftCellValue = delta;
+		GLfloat rightCellValue = 1.f - delta;
+		
 		for (int i = 0; i < kernelSize; i++)
 		{
 			if (i == 4)
@@ -638,10 +645,10 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 
 			if (i == sectorsToCells[sectorID])//mid cell value
 			{
-				kernel[i] = cellValue;
+				kernel[i] = midCellValue;
 				//set opposite cell value
 				GLint oppositeId = sectorsToCells[(sectorID + 4) % sectorsSize];
-				kernel[oppositeId] = -cellValue;
+				kernel[oppositeId] = -midCellValue;
 				
 				freeCells[i] = false;
 				freeCells[oppositeId] = false;
@@ -653,15 +660,20 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 			{
 
 			}
+			else if (i == sectorsToCells[(sectorID + 2) % sectorsSize])//left left cell value
+			{
+
+			}
 			else if (i == sectorsToCells[(sectorID - 1) % sectorsSize])//right cell value
 			{
 
 			}
-			else if (freeCells[i])
+			
+			/*else if (freeCells[i])
 			{
 				kernel[i] = 0.f;
 				SetKernelValue(postProcShader, i);
-			}
+			}*/
 
 			char num[2];
 			_itoa_s(i, num, 10);
