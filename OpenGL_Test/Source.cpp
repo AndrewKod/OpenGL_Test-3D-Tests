@@ -79,6 +79,16 @@ GLfloat kernelSectors[anglesSize] = {
 	 a + b * 7
 };
 
+GLint sectorsToCells[anglesSize] = {
+	 5,
+	 2,
+	 1,
+	 0,
+	 3,
+	 6,
+	 7,
+	 8
+};
 
 
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
@@ -580,15 +590,38 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 
 		GLfloat angle = (GLint)(glfwGetTime() * 100.f) % 360;
 		
-		angle = 359.f;
+		//angle = 359.f;
+
 		GLint sectorID = 0;
 		if (angle < kernelTreshold)
 			sectorID = 0;
 		else
 			sectorID = ((GLint)((angle - kernelTreshold) / kernelAngle) + 1) % anglesSize;
 
-		GLfloat offset = angle - kernelAngles[sectorID];
-		
+		GLfloat offset = 0.f;
+		if(angle > 360.f - kernelTreshold)
+			offset = 360.f - angle;
+		else
+			offset = angle - kernelAngles[sectorID];
+
+		GLfloat cellValue = 2.f * (abs(offset) / kernelTreshold);
+
+		for (int i = 0; i < kernelSize; i++)
+		{
+			if (i == 4)
+				continue;
+
+			if (i == sectorsToCells[sectorID])
+				kernel[i] = cellValue;
+			else
+				kernel[i] = 0.f;
+
+			char num[2];
+			_itoa_s(i, num, 10);
+
+			postProcShader.SetFloat(std::string("kernel[") + num + string("]"), kernel[i]);
+		}
+
 	}
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
