@@ -96,7 +96,8 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
 
 void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vector<glm::vec3>& positions, bool bSortPositions);
 
-void DrawScene(Shader & shader, GLuint cubeVAO, GLuint planeVAO, GLuint cubeTexture, GLuint floorTexture);
+void DrawScene(Shader & shader, Shader & cubemapShader, GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO,
+	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture);
 
 void DrawPostProc(Shader & shader, GLuint VAO, GLuint texture, bool bUseKernel = false);
 void SetKernelValue(Shader & postProcShader, GLint cellID);
@@ -105,6 +106,7 @@ void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLin
 void ScalePostProc();
 
 GLuint loadCubemap(const vector<std::string>& faces);
+void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, const glm::mat4& view, const glm::mat4& projection);
 
 int main()
 {
@@ -314,6 +316,51 @@ int main()
 
 	/////////////////////////////////////////////CUBEMAP/////////////////////////////////////////////
 
+	float skyboxVertices[] = {
+		// positions          
+		-1.0f,  1.0f, -1.0f,
+		-1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		-1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f
+	};
+
 	vector<std::string> faces = 
 	{
 		"Cube Textures/skybox/right.jpg",
@@ -326,6 +373,16 @@ int main()
 	};
 	GLuint cubemapTexture = loadCubemap(faces);
 
+	// cube VAO
+	unsigned int skyboxVAO, skyboxVBO;
+	glGenVertexArrays(1, &skyboxVAO);
+	glGenBuffers(1, &skyboxVBO);
+	glBindVertexArray(skyboxVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	
 
     // render loop
     // -----------
@@ -343,7 +400,7 @@ int main()
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		DrawScene(shader, cubeVAO, planeVAO, cubeTexture, floorTexture);
+		DrawScene(shader, cubemapShader, cubeVAO, planeVAO, skyboxVAO, cubeTexture, floorTexture, cubemapTexture);
 
 
 		/////////////////////////////////////////////////FRAME BUFFER///////////////////////////////////////////////
@@ -354,7 +411,7 @@ int main()
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		DrawScene(shader, cubeVAO, planeVAO, cubeTexture, floorTexture);
+		DrawScene(shader, cubemapShader, cubeVAO, planeVAO, skyboxVAO, cubeTexture, floorTexture, cubemapTexture);
 
         // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -389,7 +446,8 @@ int main()
     return 0;
 }
 
-void DrawScene(Shader & shader, GLuint cubeVAO, GLuint planeVAO, GLuint cubeTexture, GLuint floorTexture)
+void DrawScene(Shader & shader, Shader & cubemapShader, GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO,
+	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture)
 {
 	glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
 
@@ -405,6 +463,9 @@ void DrawScene(Shader & shader, GLuint cubeVAO, GLuint planeVAO, GLuint cubeText
 	shader.SetMat4("projection", projection);
 
 	shader.SetBool("bStencil", false);
+
+	glm::mat4 skyboxView = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+	DrawSkybox(cubemapShader, skyboxVAO, cubemapTexture, skyboxView, projection);
 
 	glStencilMask(0x00);
 	// floor
@@ -558,7 +619,8 @@ unsigned int loadTexture(char const * path)
 
 void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, bool bStencil)
 {
-	
+	shader.UseProgram();
+
 	shader.SetBool("bStencil", bStencil ? true : false);
 	
 	glBindVertexArray(VAO);
@@ -581,6 +643,8 @@ void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, boo
 
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
 {
+	shader.UseProgram();
+
 	glBindVertexArray(VAO);
 
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -728,33 +792,26 @@ GLuint loadCubemap(const vector<std::string>& faces)
 	return textureID;
 }
 
-void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, bool bStencil)
+void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, const glm::mat4& view, const glm::mat4& projection)
 {
 
 	glDepthMask(GL_FALSE);
+	glFrontFace(GL_CW);
 	shader.UseProgram();
 	// ... задание видовой и проекционной матриц
+
+	shader.SetMat4("view", view);
+	shader.SetMat4("projection", projection);
+
 	glBindVertexArray(VAO);
+
 	glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
-	glDepthMask(GL_TRUE);
-
-	shader.SetBool("bStencil", bStencil ? true : false);
-
-	glBindVertexArray(VAO);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
-	model = glm::scale(model, scale);
-	shader.SetMat4("model", model);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
-	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
-	model = glm::scale(model, scale);
-	shader.SetMat4("model", model);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 
 	glBindVertexArray(0);
+
+	glDepthMask(GL_TRUE);
+	glFrontFace(GL_CCW);	
+
+	
 }
