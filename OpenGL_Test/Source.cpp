@@ -104,6 +104,8 @@ void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLin
 
 void ScalePostProc();
 
+GLuint loadCubemap(const vector<std::string>& faces);
+
 int main()
 {
     // glfw: initialize and configure
@@ -155,6 +157,7 @@ int main()
     // -------------------------
     Shader shader("Shaders/Vertex Shader.glsl", "Shaders/Fragment Shader.glsl");
     Shader postProcShader("Shaders/Vertex Shader PP.glsl", "Shaders/Fragment Shader PP.glsl");
+	Shader cubemapShader("Shaders/Cubemap Vertex Shader.glsl", "Shaders/Cubemap Fragment Shader.glsl");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -308,6 +311,22 @@ int main()
     // draw as wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+
+	/////////////////////////////////////////////CUBEMAP/////////////////////////////////////////////
+
+	vector<std::string> faces = 
+	{
+		"Cube Textures/skybox/right.jpg",
+		"Cube Textures/skybox/left.jpg",
+		"Cube Textures/skybox/top.jpg",
+		"Cube Textures/skybox/bottom.jpg",
+		"Cube Textures/skybox/front.jpg",
+		"Cube Textures/skybox/back.jpg"
+
+	};
+	GLuint cubemapTexture = loadCubemap(faces);
+
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -326,6 +345,8 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		DrawScene(shader, cubeVAO, planeVAO, cubeTexture, floorTexture);
 
+
+		/////////////////////////////////////////////////FRAME BUFFER///////////////////////////////////////////////
         // render
         // ------
         // bind to framebuffer and draw scene as we normally would to color texture 
@@ -341,7 +362,7 @@ int main()
         // clear all relevant buffers
         //glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
         //glClear(GL_COLOR_BUFFER_BIT);
-
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
 
 		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, bUseKernel);
@@ -671,6 +692,69 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 	}
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glBindVertexArray(0);
+}
+
+GLuint loadCubemap(const vector<std::string>& faces)
+{
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+	int width, height, nrChannels;
+	for (unsigned int i = 0; i < faces.size(); i++)
+	{
+		unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+			);
+			stbi_image_free(data);
+		}
+		else
+		{
+			std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+			stbi_image_free(data);
+		}
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	return textureID;
+}
+
+void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, bool bStencil)
+{
+
+	glDepthMask(GL_FALSE);
+	shader.UseProgram();
+	// ... задание видовой и проекционной матриц
+	glBindVertexArray(VAO);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glDepthMask(GL_TRUE);
+
+	shader.SetBool("bStencil", bStencil ? true : false);
+
+	glBindVertexArray(VAO);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+	model = glm::scale(model, scale);
+	shader.SetMat4("model", model);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+	model = glm::scale(model, scale);
+	shader.SetMat4("model", model);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
 
 	glBindVertexArray(0);
 }

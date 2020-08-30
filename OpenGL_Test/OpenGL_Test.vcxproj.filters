@@ -44,6 +44,12 @@
     <None Include="Shaders\Fragment Shader PP.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\Cubemap Vertex Shader.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Cubemap Fragment Shader.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
