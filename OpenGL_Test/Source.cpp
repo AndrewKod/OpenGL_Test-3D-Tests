@@ -305,7 +305,7 @@ int main()
 		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, bUseKernel);
 
 
-		//DrawReflectCube(shader, reflectVAO, cubemapTexture, camera.Position);
+		DrawReflectCube(shader, reflectVAO, cubemapTexture, camera.Position);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -542,7 +542,7 @@ void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, boo
 
 	glBindVertexArray(0);
 
-	//shader.SetBool("bStencil", false);
+	shader.SetBool("bStencil", false);
 }
 
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
@@ -551,6 +551,7 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
 
 	glBindVertexArray(VAO);
 
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	shader.SetMat4("model", glm::mat4(1.0f));
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -733,7 +734,7 @@ void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 came
 
 	glBindVertexArray(0);
 
-	//shader.SetBool("bReflect", false);
+	shader.SetBool("bReflect", false);
 }
 
 void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO)
@@ -905,42 +906,42 @@ void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO)
 {
 	float reflectVertices[] = {
 		// positions          // normals
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,//back
 		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,//front
 		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,//left
 		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
 		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
 		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
 		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,//right
 		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
 		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
 		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
 		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,//bot
 		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
 		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
 		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
 		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,//top
 		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
 		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
 		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,

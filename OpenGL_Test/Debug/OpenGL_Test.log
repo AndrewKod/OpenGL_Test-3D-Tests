@@ -8,5 +8,5 @@ e:\андро\программирование\мои проекты\opengl_test
 e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(470): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(471): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(480): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(607): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(608): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
   OpenGL_Test.vcxproj -> E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\OpenGL_Test.exe
