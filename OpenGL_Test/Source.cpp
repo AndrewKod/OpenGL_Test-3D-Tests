@@ -116,6 +116,7 @@ void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, const glm::mat4& vi
 
 
 void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 cameraPos);
+void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 cameraPos);
 
 
 int main()
@@ -301,11 +302,11 @@ int main()
         //glClear(GL_COLOR_BUFFER_BIT);
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
+		DrawReflectCube(shader, reflectVAO, cubemapTexture, camera.Position);
+
+		DrawRefractCube(shader, reflectVAO, cubemapTexture, camera.Position);
 
 		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, bUseKernel);
-
-
-		DrawReflectCube(shader, reflectVAO, cubemapTexture, camera.Position);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -529,6 +530,8 @@ void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, boo
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
+	shader.SetInt("texture1", 0);
+
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
 	model = glm::scale(model, scale);
@@ -553,6 +556,8 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
+	shader.SetInt("texture1", 0);
+
 	shader.SetMat4("model", glm::mat4(1.0f));
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -584,6 +589,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 
 	glBindVertexArray(postProcVAO);
 
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
 	
 	if (bPPModelChanged)
@@ -719,13 +725,16 @@ void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 came
 	shader.UseProgram();
 
 	shader.SetBool("bReflect", true);
+	/*shader.SetBool("bReflectF", true);*/
 
 	shader.SetVec3("cameraPos", cameraPos);
 
 	glBindVertexArray(VAO);
 
+	glEnable(GL_TEXTURE_CUBE_MAP);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+	shader.SetInt("skybox", 1);
 	
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(2.0f, 2.0f, 0.0f));	
@@ -735,6 +744,36 @@ void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 came
 	glBindVertexArray(0);
 
 	shader.SetBool("bReflect", false);
+	/*shader.SetBool("bReflectF", false);*/
+	glEnable(GL_TEXTURE_2D);
+}
+
+void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 cameraPos)
+{
+	shader.UseProgram();
+
+	shader.SetBool("bRefract", true);
+	/*shader.SetBool("bReflectF", true);*/
+
+	shader.SetVec3("cameraPos", cameraPos);
+
+	glBindVertexArray(VAO);
+
+	glEnable(GL_TEXTURE_CUBE_MAP);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+	shader.SetInt("skybox", 1);
+
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(0.0f, 2.0f, 0.0f));
+	shader.SetMat4("model", model);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+
+	glBindVertexArray(0);
+
+	shader.SetBool("bRefract", false);
+	/*shader.SetBool("bReflectF", false);*/
+	glEnable(GL_TEXTURE_2D);
 }
 
 void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO)
@@ -913,19 +952,19 @@ void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO)
 		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,//front
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,//front		 
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,		
 		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,//left
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,//left		
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
 		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,		
 		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
 		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,//right
 		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
@@ -934,12 +973,12 @@ void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO)
 		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,//bot
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,//bot		 
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
 		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,		
 		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
 
 		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,//top
 		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
