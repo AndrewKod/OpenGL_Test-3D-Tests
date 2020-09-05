@@ -134,9 +134,11 @@
   <ItemGroup>
     <None Include="Shaders\Cubemap Fragment Shader.glsl" />
     <None Include="Shaders\Cubemap Vertex Shader.glsl" />
+    <None Include="Shaders\Fragment Shader Model.glsl" />
     <None Include="Shaders\Fragment Shader PP.glsl" />
     <None Include="Shaders\Fragment Shader.glsl" />
     <None Include="Shaders\Single Color Shader.glsl" />
+    <None Include="Shaders\Vertex Shader Model.glsl" />
     <None Include="Shaders\Vertex Shader PP.glsl" />
     <None Include="Shaders\Vertex Shader.glsl" />
   </ItemGroup>

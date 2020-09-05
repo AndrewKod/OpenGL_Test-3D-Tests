@@ -34,8 +34,15 @@ public:
 	string directory;
 	bool gammaCorrection;
 
+	GLfloat scale;
+	GLint   skyboxID;
+
 	// constructor, expects a filepath to a 3D model.
-	Model(string const &path, bool gamma = false) : gammaCorrection(gamma)
+	Model(string const &path, GLint skyboxID, GLfloat scale = 1.0f, bool gamma = false)
+		:
+		gammaCorrection(gamma),
+		scale(scale),
+		skyboxID(skyboxID)
 	{
 		loadModel(path);
 	}
@@ -102,12 +109,18 @@ private:
 			vector.x = mesh->mVertices[i].x;
 			vector.y = mesh->mVertices[i].y;
 			vector.z = mesh->mVertices[i].z;
-			vertex.Position = vector;
+			vertex.Position = vector * this->scale;
 			// normals
-			vector.x = mesh->mNormals[i].x;
-			vector.y = mesh->mNormals[i].y;
-			vector.z = mesh->mNormals[i].z;
-			vertex.Normal = vector;
+			if (mesh->mNormals != nullptr)
+			{
+				vector.x = mesh->mNormals[i].x;
+				vector.y = mesh->mNormals[i].y;
+				vector.z = mesh->mNormals[i].z;
+				vertex.Normal = vector;
+			}
+			else
+				vertex.Normal = glm::vec3(0.0f);
+
 			// texture coordinates
 			if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
 			{
@@ -120,16 +133,29 @@ private:
 			}
 			else
 				vertex.TexCoords = glm::vec2(0.0f, 0.0f);
+
 			// tangent
-			vector.x = mesh->mTangents[i].x;
-			vector.y = mesh->mTangents[i].y;
-			vector.z = mesh->mTangents[i].z;
-			vertex.Tangent = vector;
+			if (mesh->mTangents != nullptr)
+			{
+				vector.x = mesh->mTangents[i].x;
+				vector.y = mesh->mTangents[i].y;
+				vector.z = mesh->mTangents[i].z;
+				vertex.Tangent = vector;
+			}
+			else
+				vertex.Tangent = glm::vec3(0.0f);
+
 			// bitangent
-			vector.x = mesh->mBitangents[i].x;
-			vector.y = mesh->mBitangents[i].y;
-			vector.z = mesh->mBitangents[i].z;
-			vertex.Bitangent = vector;
+			if (mesh->mBitangents != nullptr)
+			{
+				vector.x = mesh->mBitangents[i].x;
+				vector.y = mesh->mBitangents[i].y;
+				vector.z = mesh->mBitangents[i].z;
+				vertex.Bitangent = vector;
+			}
+			else
+				vertex.Bitangent = glm::vec3(0.0f);
+
 			vertices.push_back(vertex);
 		}
 		// now wak through each of the mesh's faces (a face is a mesh its triangle) and retrieve the corresponding vertex indices.
@@ -150,23 +176,24 @@ private:
 		// normal: texture_normalN
 
 		// 1. diffuse maps
-		vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+		vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "diffuse");
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 		// 2. specular maps
-		vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+		vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "specular");
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 		// 3. normal maps
-		std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+		std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "normal");
 		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 		// 4. height maps
-		std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
+		std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "height");
 		textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
-		// 4. reflection maps
-		std::vector<Texture> reflectonMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_reflection");
-		textures.insert(textures.end(), reflectonMaps.begin(), reflectonMaps.end());
+		// 5. reflection maps
+		//for backpack model use specular as reflection
+		std::vector<Texture> reflectionMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "reflection");
+		textures.insert(textures.end(), reflectionMaps.begin(), reflectionMaps.end());
 
 		// return a mesh object created from the extracted mesh data
-		return Mesh(vertices, indices, textures);
+		return Mesh(vertices, indices, textures, this->skyboxID);
 	}
 
 	// checks all material textures of a given type and loads the textures if they're not loaded yet.
@@ -197,6 +224,7 @@ private:
 				texture.path = str.C_Str();
 				textures.push_back(texture);
 				textures_loaded.push_back(texture);  // store it as texture loaded for entire model, to ensure we won't unnecesery load duplicate textures.
+				
 			}
 		}
 		return textures;

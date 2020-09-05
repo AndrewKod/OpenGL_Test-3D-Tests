@@ -50,6 +50,12 @@
     <None Include="Shaders\Cubemap Fragment Shader.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\Fragment Shader Model.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Vertex Shader Model.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">

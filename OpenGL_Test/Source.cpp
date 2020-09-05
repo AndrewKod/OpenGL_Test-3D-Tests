@@ -116,7 +116,7 @@ void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, const glm::mat4& vi
 
 
 void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 cameraPos);
-void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 cameraPos);
+void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, GLuint testTex, glm::vec3 cameraPos);
 
 
 int main()
@@ -174,7 +174,7 @@ int main()
     Shader postProcShader("Shaders/Vertex Shader PP.glsl", "Shaders/Fragment Shader PP.glsl");
 	Shader cubemapShader("Shaders/Cubemap Vertex Shader.glsl", "Shaders/Cubemap Fragment Shader.glsl");
 	 
-
+	Shader modelShader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl");
 	
     // cube VAO
     GLuint cubeVAO, cubeVBO;
@@ -263,6 +263,16 @@ int main()
 	GenReflectVAO(reflectVAO, reflectVBO);
 
 
+	/////////////////////////////////////MODEL////////////////////////////////////
+	Model model("Models/backpack/backpack.obj", cubemapTexture);
+	modelShader.UseProgram();
+	glm::mat4 mod = glm::mat4(1.0f);
+	mod = glm::translate(mod, glm::vec3(2.0f, 2.0f, -3.0f));
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+	modelShader.SetMat4("projection", projection);
+	modelShader.SetMat4("model", mod);
+	
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -304,7 +314,14 @@ int main()
 		
 		DrawReflectCube(shader, reflectVAO, cubemapTexture, camera.Position);
 
-		DrawRefractCube(shader, reflectVAO, cubemapTexture, camera.Position);
+		DrawRefractCube(shader, reflectVAO, cubemapTexture, cubeTexture, camera.Position);
+
+		//Draw model
+		glm::mat4 view = camera.GetViewMatrix();
+		modelShader.UseProgram();
+		modelShader.SetMat4("view", view);
+		modelShader.SetVec3("cameraPos", camera.Position);
+		model.Draw(modelShader);
 
 		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, bUseKernel);
 
@@ -388,6 +405,8 @@ void DrawScene(Shader & shader, Shader & cubemapShader, GLuint cubeVAO, GLuint p
 	glEnable(GL_DEPTH_TEST);
 
 	
+	//Draw Model
+
 
 
 	//render Skybox
@@ -748,7 +767,7 @@ void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 came
 	glEnable(GL_TEXTURE_2D);
 }
 
-void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 cameraPos)
+void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, GLuint testTex, glm::vec3 cameraPos)
 {
 	shader.UseProgram();
 
@@ -759,7 +778,11 @@ void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 came
 
 	glBindVertexArray(VAO);
 
-	glEnable(GL_TEXTURE_CUBE_MAP);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, testTex);
+	shader.SetInt("texture1", 0);
+
+	//glEnable(GL_TEXTURE_CUBE_MAP);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
 	shader.SetInt("skybox", 1);
@@ -944,48 +967,48 @@ void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO)
 void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO)
 {
 	float reflectVertices[] = {
-		// positions          // normals
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,//back
-		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		// positions			// texture Coords	 //normals
+		-0.5f, -0.5f, -0.5f,	0.0f, 0.0f,			 0.0f,  0.0f, -1.0f,//back
+		 0.5f, -0.5f, -0.5f,	1.0f, 0.0f,			 0.0f,  0.0f, -1.0f,
+		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 0.0f,  0.0f, -1.0f,
+		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 0.0f,  0.0f, -1.0f,
+		-0.5f,  0.5f, -0.5f,	0.0f, 1.0f,			 0.0f,  0.0f, -1.0f,
+		-0.5f, -0.5f, -0.5f,	0.0f, 0.0f,			 0.0f,  0.0f, -1.0f,
 
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,//front		 
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,		
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 0.0f,  0.0f,  1.0f,//front         
+		 0.5f,  0.5f,  0.5f,	1.0f, 1.0f,			 0.0f,  0.0f,  1.0f,
+		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,			 0.0f,  0.0f,  1.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 1.0f,			 0.0f,  0.0f,  1.0f,
+		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 0.0f,  0.0f,  1.0f,
+		-0.5f,  0.5f,  0.5f,	0.0f, 1.0f,			 0.0f,  0.0f,  1.0f,
 
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,//left		
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,		
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			-1.0f,  0.0f,  0.0f,//left        
+		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			-1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			-1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			-1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			-1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			-1.0f,  0.0f,  0.0f,
 
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,//right
-		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 1.0f,  0.0f,  0.0f,//right
+		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 1.0f,  0.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 1.0f,  0.0f,  0.0f,
 
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,//bot		 
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,		
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 0.0f, -1.0f,  0.0f,//bot         
+		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,			 0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,	1.0f, 1.0f,			 0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,			 0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 0.0f, -1.0f,  0.0f,
 
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,//top
-		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+		-0.5f,  0.5f, -0.5f,	0.0f, 1.0f,			 0.0f,  1.0f,  0.0f,//top
+		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f,	0.0f, 0.0f,			 0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f,	0.0f, 1.0f,			 0.0f,  1.0f,  0.0f
 	};
 
 	glGenVertexArrays(1, &reflectVAO);
@@ -993,9 +1016,14 @@ void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO)
 	glBindVertexArray(reflectVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, reflectVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(reflectVertices), &reflectVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	//pos
+	glEnableVertexAttribArray(0);	
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+	//UV
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	//normal
 	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
 }
 

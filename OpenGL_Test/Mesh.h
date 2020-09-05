@@ -16,10 +16,12 @@ using namespace std;
 struct Vertex {
 	// position
 	glm::vec3 Position;
-	// normal
-	glm::vec3 Normal;
+	// color
+	glm::vec3 Color;
 	// texCoords
 	glm::vec2 TexCoords;
+	// normal
+	glm::vec3 Normal;
 	// tangent
 	glm::vec3 Tangent;
 	// bitangent
@@ -38,14 +40,18 @@ public:
 	vector<Vertex>       vertices;
 	vector<unsigned int> indices;
 	vector<Texture>      textures;
+	//skybox cubemap ID
+	GLuint				 skyboxID;
 	unsigned int VAO;
 
 	// constructor
-	Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
+	Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures, GLuint skyboxID)
 	{
 		this->vertices = vertices;
 		this->indices = indices;
 		this->textures = textures;
+
+		this->skyboxID = skyboxID;
 
 		// now that we have all the required data, set the vertex buffers and its attribute pointers.
 		setupMesh();
@@ -54,39 +60,52 @@ public:
 	// render the mesh
 	void Draw(Shader &shader)
 	{
+		shader.UseProgram();
+
 		// bind appropriate textures
-		unsigned int diffuseNr = 1;
-		unsigned int specularNr = 1;
-		unsigned int normalNr = 1;
-		unsigned int heightNr = 1;
-		unsigned int reflectionNr = 1;
+		unsigned int diffuseNr = 0;
+		unsigned int specularNr = 0;
+		unsigned int normalNr = 0;
+		unsigned int heightNr = 0;
+		unsigned int reflectionNr = 0;
 		for (unsigned int i = 0; i < textures.size(); i++)
 		{
 			glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
 			// retrieve texture number (the N in diffuse_textureN)
 			string number;
 			string name = textures[i].type;
-			if (name == "texture_diffuse")
+			if (name == "diffuse")
 				number = std::to_string(diffuseNr++);
-			else if (name == "texture_specular")
+			else if (name == "specular")
 				number = std::to_string(specularNr++); // transfer unsigned int to stream
-			else if (name == "texture_normal")
+			else if (name == "normal")
 				number = std::to_string(normalNr++); // transfer unsigned int to stream
-			else if (name == "texture_height")
+			else if (name == "height")
 				number = std::to_string(heightNr++); // transfer unsigned int to stream
-			else if (name == "texture_reflection")
+			else if (name == "reflection")
 				number = std::to_string(reflectionNr++); // transfer unsigned int to stream
 
 			// now set the sampler to the correct texture unit
-			glUniform1i(glGetUniformLocation(shader.ID, (name + number).c_str()), i);
+			string propertyName = "material." + name + "[" + number + "]";
+			shader.SetInt(propertyName, i);
+			//glUniform1i(glGetUniformLocation(shader.ID, ("material." + name + "[" + number + "]").c_str()), i);
 			// and finally bind the texture
 			glBindTexture(GL_TEXTURE_2D, textures[i].id);
 		}
 
+		//Bind skybox cubemap
+		//glEnable(GL_TEXTURE_CUBE_MAP);
+		glActiveTexture(GL_TEXTURE0 + textures.size());
+		glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxID);
+
+		shader.SetInt("skybox", textures.size());		
+
+		glFrontFace(GL_CW);
 		// draw mesh
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+		glFrontFace(GL_CCW);
 
 		// always good practice to set everything back to defaults once configured.
 		glActiveTexture(GL_TEXTURE0);
@@ -121,16 +140,19 @@ private:
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 		// vertex normals
 		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Color));
 		// vertex texture coords
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-		// vertex tangent
+		// vertex normals
 		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
-		// vertex bitangent
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+		// vertex tangent
 		glEnableVertexAttribArray(4);
-		glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+		glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
+		// vertex bitangent
+		glEnableVertexAttribArray(5);
+		glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
 
 		glBindVertexArray(0);
 	}
