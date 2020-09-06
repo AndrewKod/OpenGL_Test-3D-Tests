@@ -39,7 +39,7 @@ glm::vec3 postProcPosition(-0.000f, 0.0f, -0.0f);
 GLfloat postProcInitSize = 1.0f;
 GLfloat postProcInitScale = 1.0f;
 GLfloat postProcScale = postProcInitScale;
-GLfloat postProcScaleDelta = 0.0001f;
+GLfloat postProcScaleDelta = 0.0011f;
 
 GLfloat kernelAngle = 45.f;
 GLfloat kernelTreshold = kernelAngle/2.f;
@@ -176,6 +176,16 @@ int main()
 	 
 	Shader modelShader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl");
 	
+	//////////////////////////////UNIFORM BUFFER//////////////////////////////
+	//2x matrices 4x4
+	unsigned int uboBlock;
+	glGenBuffers(1, &uboBlock);
+	glBindBuffer(GL_UNIFORM_BUFFER, uboBlock);
+	glBufferData(GL_UNIFORM_BUFFER, 128, NULL, GL_STATIC_DRAW); // גûהוכÿול 128 באיע ןאלÿעט
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+
+
     // cube VAO
     GLuint cubeVAO, cubeVBO;
 	GenCubeVAO(cubeVAO, cubeVBO);
@@ -264,7 +274,7 @@ int main()
 
 
 	/////////////////////////////////////MODEL////////////////////////////////////
-	Model model("Models/backpack/backpack.obj", cubemapTexture);
+	Model model("Models/backpack/backpack.obj", cubemapTexture, 1.f, false);
 	modelShader.UseProgram();
 	glm::mat4 mod = glm::mat4(1.0f);
 	mod = glm::translate(mod, glm::vec3(2.0f, 2.0f, -3.0f));

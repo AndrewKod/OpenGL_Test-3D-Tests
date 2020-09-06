@@ -36,13 +36,16 @@ public:
 
 	GLfloat scale;
 	GLint   skyboxID;
+	bool	bCCWTris;
+
 
 	// constructor, expects a filepath to a 3D model.
-	Model(string const &path, GLint skyboxID, GLfloat scale = 1.0f, bool gamma = false)
+	Model(string const &path, GLint skyboxID = 0, GLfloat scale = 1.0f, bool bCCWTris = true, bool gamma = false)
 		:
 		gammaCorrection(gamma),
 		scale(scale),
-		skyboxID(skyboxID)
+		skyboxID(skyboxID),
+		bCCWTris(bCCWTris)
 	{
 		loadModel(path);
 	}
@@ -193,7 +196,7 @@ private:
 		textures.insert(textures.end(), reflectionMaps.begin(), reflectionMaps.end());
 
 		// return a mesh object created from the extracted mesh data
-		return Mesh(vertices, indices, textures, this->skyboxID);
+		return Mesh(vertices, indices, textures, this->skyboxID, this->bCCWTris);
 	}
 
 	// checks all material textures of a given type and loads the textures if they're not loaded yet.

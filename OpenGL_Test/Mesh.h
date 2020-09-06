@@ -42,16 +42,20 @@ public:
 	vector<Texture>      textures;
 	//skybox cubemap ID
 	GLuint				 skyboxID;
+	bool				 bCCWTris;
+
 	unsigned int VAO;
 
 	// constructor
-	Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures, GLuint skyboxID)
+	Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures, GLuint skyboxID = 0, bool	bCCWTris = true)
 	{
 		this->vertices = vertices;
 		this->indices = indices;
 		this->textures = textures;
 
 		this->skyboxID = skyboxID;
+
+		this->bCCWTris = bCCWTris;
 
 		// now that we have all the required data, set the vertex buffers and its attribute pointers.
 		setupMesh();
@@ -94,18 +98,23 @@ public:
 		}
 
 		//Bind skybox cubemap
-		//glEnable(GL_TEXTURE_CUBE_MAP);
-		glActiveTexture(GL_TEXTURE0 + textures.size());
-		glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxID);
+		if (this->skyboxID != 0)
+		{//glEnable(GL_TEXTURE_CUBE_MAP);
+			glActiveTexture(GL_TEXTURE0 + textures.size());
+			glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxID);
 
-		shader.SetInt("skybox", textures.size());		
+			shader.SetInt("skybox", textures.size());
+		}
 
-		glFrontFace(GL_CW);
+		//enable CW triangles order
+		if(!bCCWTris)
+			glFrontFace(GL_CW);
 		// draw mesh
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
-		glFrontFace(GL_CCW);
+		if (!bCCWTris)
+			glFrontFace(GL_CCW);
 
 		// always good practice to set everything back to defaults once configured.
 		glActiveTexture(GL_TEXTURE0);
