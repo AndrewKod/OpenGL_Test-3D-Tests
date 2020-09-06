@@ -13,13 +13,13 @@ out vec3 Normal;
 out vec3 Position;
 
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+//uniform mat4 view;
+//uniform mat4 projection;
 
 layout (std140) uniform Matrices
 {
-	mat4 view1;
-    mat4 projection1;    
+	mat4 view;
+    mat4 projection;    
 };
 
 void main()

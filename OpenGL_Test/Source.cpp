@@ -102,7 +102,8 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
 
 void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vector<glm::vec3>& positions, bool bSortPositions);
 
-void DrawScene(Shader & shader, Shader & cubemapShader, GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO,
+void DrawScene(Shader & shader, Shader & skyboxShader,
+	GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
 	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture);
 
 void DrawPostProc(Shader & shader, GLuint VAO, GLuint texture, bool bUseKernel = false);
@@ -172,10 +173,10 @@ int main()
     // -------------------------
     Shader shader("Shaders/Vertex Shader.glsl", "Shaders/Fragment Shader.glsl");
     Shader postProcShader("Shaders/Vertex Shader PP.glsl", "Shaders/Fragment Shader PP.glsl");
-	Shader cubemapShader("Shaders/Cubemap Vertex Shader.glsl", "Shaders/Cubemap Fragment Shader.glsl");
+	Shader skyboxShader("Shaders/Cubemap Vertex Shader.glsl", "Shaders/Cubemap Fragment Shader.glsl");
 	 
 	Shader modelShader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl");
-	
+
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
 	unsigned int uboBlock;
@@ -184,7 +185,12 @@ int main()
 	glBufferData(GL_UNIFORM_BUFFER, 128, NULL, GL_STATIC_DRAW); // גûהוכÿול 128 באיע ןאלÿעט
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboBlock);
 
+	//postProc and skybox shaders are not need uniform buffer
+	shader.BindUniformBuffer("Matrices", 0);	
+	//skyboxShader.BindUniformBuffer("Matrices", 0);
+	modelShader.BindUniformBuffer("Matrices", 0);
 
     // cube VAO
     GLuint cubeVAO, cubeVBO;
@@ -278,8 +284,6 @@ int main()
 	modelShader.UseProgram();
 	glm::mat4 mod = glm::mat4(1.0f);
 	mod = glm::translate(mod, glm::vec3(2.0f, 2.0f, -3.0f));
-	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-	modelShader.SetMat4("projection", projection);
 	modelShader.SetMat4("model", mod);
 	
 
@@ -299,7 +303,7 @@ int main()
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		DrawScene(shader, cubemapShader, cubeVAO, planeVAO, skyboxVAO,
+		DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
 			cubeTexture, floorTexture, cubemapTexture);
 
 
@@ -311,7 +315,7 @@ int main()
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		DrawScene(shader, cubemapShader, cubeVAO, planeVAO, skyboxVAO,
+		DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
 			cubeTexture, floorTexture, cubemapTexture);
 
         // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
@@ -327,9 +331,7 @@ int main()
 		DrawRefractCube(shader, reflectVAO, cubemapTexture, cubeTexture, camera.Position);
 
 		//Draw model
-		glm::mat4 view = camera.GetViewMatrix();
-		modelShader.UseProgram();
-		modelShader.SetMat4("view", view);
+		modelShader.UseProgram();		
 		modelShader.SetVec3("cameraPos", camera.Position);
 		model.Draw(modelShader);
 
@@ -365,7 +367,8 @@ int main()
     return 0;
 }
 
-void DrawScene(Shader & shader, Shader & cubemapShader, GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO,
+void DrawScene(Shader & shader, Shader & skyboxShader,
+	GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
 	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture)
 {
 	glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
@@ -378,8 +381,11 @@ void DrawScene(Shader & shader, Shader & cubemapShader, GLuint cubeVAO, GLuint p
 	glm::mat4 model = glm::mat4(1.0f);
 	glm::mat4 view = camera.GetViewMatrix();
 	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-	shader.SetMat4("view", view);
-	shader.SetMat4("projection", projection);
+	glBindBuffer(GL_UNIFORM_BUFFER, uboBlock);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &view[0][0]);
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &projection[0][0]);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	
 
 	shader.SetBool("bStencil", false);
 
@@ -424,7 +430,7 @@ void DrawScene(Shader & shader, Shader & cubemapShader, GLuint cubeVAO, GLuint p
 	glDepthMask(GL_FALSE);
 	glFrontFace(GL_CW);
 	glm::mat4 skyboxView = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-	DrawSkybox(cubemapShader, skyboxVAO, cubemapTexture, skyboxView, projection);
+	DrawSkybox(skyboxShader, skyboxVAO, cubemapTexture, skyboxView, projection);
 	glDepthMask(GL_TRUE);
 	glFrontFace(GL_CCW);
 	glDepthFunc(GL_LESS);
