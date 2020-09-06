@@ -11,6 +11,8 @@ uniform vec2 uvOffset;
 
 void main()
 { 
+	gl_FragDepth = 0.0;
+
 	vec4 col = vec4(0.0);
 	if(!bUseKernel)
 		col = texture(screenTexture, TexCoords);
