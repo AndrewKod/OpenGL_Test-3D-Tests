@@ -97,7 +97,8 @@ void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO);
 void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO);
 
 
-void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false);
+void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f),
+	bool bStencil = false, glm::vec4 borderColor = glm::vec4(0.f));
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
 
 void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vector<glm::vec3>& positions, bool bSortPositions);
@@ -185,11 +186,16 @@ int main()
 	glBufferData(GL_UNIFORM_BUFFER, 128, NULL, GL_STATIC_DRAW); // גûהוכÿול 128 באיע ןאלÿעט
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboBlock);
+	glBindBufferBase(
+		GL_UNIFORM_BUFFER,
+		0,				//binding point
+		uboBlock);		//uniform buffer ID
 
 	//postProc and skybox shaders are not need uniform buffer
-	shader.BindUniformBuffer("Matrices", 0);	
-	//skyboxShader.BindUniformBuffer("Matrices", 0);
+	shader.BindUniformBuffer(
+		"Matrices",		//uniform block name
+		0);				//binding point
+	
 	modelShader.BindUniformBuffer("Matrices", 0);
 
     // cube VAO
@@ -280,11 +286,11 @@ int main()
 
 
 	/////////////////////////////////////MODEL////////////////////////////////////
-	Model model("Models/backpack/backpack.obj", cubemapTexture, 1.f, false);
+	/*Model model("Models/backpack/backpack.obj", cubemapTexture, 1.f, false);
 	modelShader.UseProgram();
 	glm::mat4 mod = glm::mat4(1.0f);
 	mod = glm::translate(mod, glm::vec3(2.0f, 2.0f, -3.0f));
-	modelShader.SetMat4("model", mod);
+	modelShader.SetMat4("model", mod);*/
 	
 
     // render loop
@@ -333,7 +339,7 @@ int main()
 		//Draw model
 		modelShader.UseProgram();		
 		modelShader.SetVec3("cameraPos", camera.Position);
-		model.Draw(modelShader);
+		//model.Draw(modelShader);
 
 		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, bUseKernel);
 
@@ -371,9 +377,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
 	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture)
 {
-	glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
-
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	
 
 
 	shader.UseProgram();
@@ -382,6 +386,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	glm::mat4 view = camera.GetViewMatrix();
 	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 	
+	////////////////////////////////////////////UNIFORM BUFFER VALUES///////////////////////////////////////////////
 	glBindBuffer(GL_UNIFORM_BUFFER, uboBlock);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &view[0][0]);
 	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &projection[0][0]);
@@ -390,16 +395,48 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 
 	shader.SetBool("bStencil", false);
 
+	glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
+
+	//glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 	
-	glStencilMask(0x00);
-	// floor
-	DrawFloor(shader, planeVAO, floorTexture);
-	//grass
-	
+	//glStencilMask(0x00);
+	//// floor
+	//DrawFloor(shader, planeVAO, floorTexture);
+	////grass
+	//
+
+	//// 1st. render pass, draw objects as normal, writing to the stencil buffer
+	//// --------------------------------------------------------------------
+	//glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	//glStencilMask(0xFF);
+	//// cubes
+	//DrawCubes(shader, cubeVAO, cubeTexture);
+
+	//// 2nd. render pass: now draw slightly scaled versions of the objects, this time disabling stencil writing.
+	//// Because the stencil buffer is now filled with several 1s. The parts of the buffer that are 1 are not drawn,
+	//// thus only drawing the objects' size differences, making it look like borders.
+	//// -----------------------------------------------------------------------------------------------------------------------------
+	//glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	//glStencilMask(0x00);
+	////glDisable(GL_DEPTH_TEST);
+
+	//float scale = 1.03f;
+	//
+	//// cubes
+	//DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true);
+
+	//glStencilMask(0xFF);
+	//glStencilFunc(GL_ALWAYS, 0, 0xFF);
+	//glEnable(GL_DEPTH_TEST);
+
+	glStencilOp(
+		GL_KEEP,		//stenc fail
+		GL_KEEP,		//depth fail, stenc pass
+		GL_REPLACE);	//both pass
 
 	// 1st. render pass, draw objects as normal, writing to the stencil buffer
 	// --------------------------------------------------------------------
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);//replace stencil val by 2
 	glStencilMask(0xFF);
 	// cubes
 	DrawCubes(shader, cubeVAO, cubeTexture);
@@ -408,23 +445,33 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	// Because the stencil buffer is now filled with several 1s. The parts of the buffer that are 1 are not drawn,
 	// thus only drawing the objects' size differences, making it look like borders.
 	// -----------------------------------------------------------------------------------------------------------------------------
+	//Draw cubes borders but keep writing to stencil buffer 1s
 	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-	glStencilMask(0x00);
+	glStencilMask(0xFF);
 	//glDisable(GL_DEPTH_TEST);
 
 	float scale = 1.03f;
+	glm::vec4 borderColor(1.0, 1.0, 0.0, 1.0);
+	// cubes for borders
+	DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true, borderColor);
+
 	
-	// cubes
-	DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true);
+	//Test drawing borders over drawn borders
+	/*scale = 1.06f;	
+	borderColor = glm::vec4(1.0, 0.0, 0.0, 1.0);
+	DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true, borderColor);*/
+	 
+	//actually, not necessary, because it's not influencing on result
+	//and using just to stop writing to stencil buffer
+	//But the stencil buffer is now filled with several 1s on cubes and borders
+	//and GPU drawing only parts of the floor outside 1s
+	glStencilMask(0x00);
+	// floor
+	DrawFloor(shader, planeVAO, floorTexture);
 
 	glStencilMask(0xFF);
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
-	glEnable(GL_DEPTH_TEST);
-
 	
-	//Draw Model
-
-
 
 	//render Skybox
 	glDepthFunc(GL_LEQUAL);
@@ -515,6 +562,8 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     camera.ProcessMouseScroll(yoffset);
+
+
 }
 
 // utility function for loading a 2D texture from file
@@ -556,11 +605,12 @@ unsigned int loadTexture(char const * path)
     return textureID;
 }
 
-void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, bool bStencil)
+void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, bool bStencil, glm::vec4 borderColor)
 {
 	shader.UseProgram();
 
-	shader.SetBool("bStencil", bStencil ? true : false);
+	shader.SetBool("bStencil", bStencil);
+	shader.SetVec4("borderColor", borderColor);
 	
 	glBindVertexArray(VAO);
 

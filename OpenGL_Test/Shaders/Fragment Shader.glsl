@@ -10,6 +10,7 @@ uniform sampler2D texture1;
 uniform samplerCube skybox;
 
 uniform bool bStencil = false;
+uniform vec4 borderColor;
 
 uniform bool bReflect = false;
 uniform bool bRefract = false;
@@ -34,7 +35,7 @@ void main()
 	}
 	else if(bStencil)
 	{
-		FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+		FragColor = borderColor;
 	}	
 	else
 	{
