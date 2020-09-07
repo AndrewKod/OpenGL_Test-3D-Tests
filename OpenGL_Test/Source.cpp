@@ -429,6 +429,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	//glStencilFunc(GL_ALWAYS, 0, 0xFF);
 	//glEnable(GL_DEPTH_TEST);
 
+	////////////////////////Alternative way to draw cubes with borders//////////////////////////
 	glStencilOp(
 		GL_KEEP,		//stenc fail
 		GL_KEEP,		//depth fail, stenc pass
