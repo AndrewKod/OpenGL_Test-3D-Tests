@@ -8,13 +8,15 @@ layout (location = 3) in vec3 normal;
 layout (location = 4) in vec3 tangent;
 layout (location = 5) in vec3 bitangent;
 
-out vec2 TexCoords;
-out vec3 Normal;
-out vec3 Position;
+//out vec2 TexCoords;
+//out vec3 Normal;
+//out vec3 Position;
 
 uniform mat4 model;
 //uniform mat4 view;
 //uniform mat4 projection;
+
+uniform bool bShowNormals = false;
 
 layout (std140) uniform Matrices
 {
@@ -22,12 +24,28 @@ layout (std140) uniform Matrices
     mat4 projection;    
 };
 
+out VS_OUT {
+    vec2 gs_texCoords;
+	vec3 gs_normal;
+
+	vec3 fs_normal;
+	vec3 fs_position;
+
+} vs_out;
+
 void main()
 {
-	
-	Normal = mat3(transpose(inverse(model))) * normal;
-	Position = vec3(model * vec4(position, 1.0));	
-    TexCoords = texCoords;    
+	if(!bShowNormals)
+	{
+		vs_out.fs_normal = mat3(transpose(inverse(model))) * normal;
+		vs_out.fs_position = vec3(model * vec4(position, 1.0));	
+		vs_out.gs_texCoords = texCoords;	
+	}
+	else
+	{
+		mat3 normalMatrix = mat3(transpose(inverse(view * model)));
+		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));
+	}
 
     gl_Position = projection * view * model * vec4(position, 1.0);
 	

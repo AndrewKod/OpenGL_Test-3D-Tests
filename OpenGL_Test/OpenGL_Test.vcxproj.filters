@@ -56,6 +56,12 @@
     <None Include="Shaders\Vertex Shader Model.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\Geometry Shader Model.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Geometry Shader Model Normals.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">

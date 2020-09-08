@@ -176,7 +176,10 @@ int main()
     Shader postProcShader("Shaders/Vertex Shader PP.glsl", "Shaders/Fragment Shader PP.glsl");
 	Shader skyboxShader("Shaders/Cubemap Vertex Shader.glsl", "Shaders/Cubemap Fragment Shader.glsl");
 	 
-	Shader modelShader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl");
+	Shader modelShader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
+		"Shaders/Geometry Shader Model.glsl");
+	Shader modelShaderNormals("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
+		"Shaders/Geometry Shader Model Normals.glsl");
 
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
@@ -197,6 +200,7 @@ int main()
 		0);				//binding point
 	
 	modelShader.BindUniformBuffer("Matrices", 0);
+	modelShaderNormals.BindUniformBuffer("Matrices", 0);
 
     // cube VAO
     GLuint cubeVAO, cubeVBO;
@@ -286,12 +290,14 @@ int main()
 
 
 	/////////////////////////////////////MODEL////////////////////////////////////
-	/*Model model("Models/backpack/backpack.obj", cubemapTexture, 1.f, false);
+	Model model("Models/backpack/backpack.obj", cubemapTexture, 1.f, false);
 	modelShader.UseProgram();
 	glm::mat4 mod = glm::mat4(1.0f);
 	mod = glm::translate(mod, glm::vec3(2.0f, 2.0f, -3.0f));
-	modelShader.SetMat4("model", mod);*/
-	
+	modelShader.SetMat4("model", mod);
+
+	modelShaderNormals.UseProgram();
+	modelShaderNormals.SetMat4("model", mod);
 
     // render loop
     // -----------
@@ -339,7 +345,14 @@ int main()
 		//Draw model
 		modelShader.UseProgram();		
 		modelShader.SetVec3("cameraPos", camera.Position);
-		//model.Draw(modelShader);
+		modelShader.SetFloat("time", glfwGetTime());
+		model.Draw(modelShader);
+
+		//Draw model normals
+		modelShaderNormals.UseProgram();
+		modelShaderNormals.SetBool("bShowNormals", true);
+		model.Draw(modelShaderNormals);
+		modelShaderNormals.SetBool("bShowNormals", false);
 
 		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, bUseKernel);
 
@@ -457,7 +470,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true, borderColor);
 
 	
-	//Test drawing borders over drawn borders
+	//Test drawing borders over borders drawn already
 	/*scale = 1.06f;	
 	borderColor = glm::vec4(1.0, 0.0, 0.0, 1.0);
 	DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true, borderColor);*/

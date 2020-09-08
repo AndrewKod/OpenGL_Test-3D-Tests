@@ -26,16 +26,25 @@ in vec3 Position;
 uniform samplerCube skybox;
 uniform vec3 cameraPos;
 
+uniform bool bShowNormals = false;
+
 void main()
 {   
-	vec3 resultColor = vec3(0.f);
+	if(bShowNormals)
+	{
+		FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+	}
+	else
+	{
+		vec3 resultColor = vec3(0.f);
 
-	vec2 invertedTexCoords = vec2(TexCoords.x, 1.0 -TexCoords.y);
+		vec2 invertedTexCoords = vec2(TexCoords.x, 1.0 - TexCoords.y);
 
-	vec3 diffuseColor = vec3(texture(material.diffuse[0], invertedTexCoords));
-	float reflectionCoef = texture(material.specular[0], invertedTexCoords).r;
+		vec3 diffuseColor = vec3(texture(material.diffuse[0], invertedTexCoords));
+		float reflectionCoef = texture(material.specular[0], invertedTexCoords).r;
 
-	vec3 I = normalize(Position - cameraPos);
-	vec3 R = reflect(I, normalize(Normal));
-	FragColor = vec4(texture(skybox, R).rgb * reflectionCoef + diffuseColor, 1.0);
+		vec3 I = normalize(Position - cameraPos);
+		vec3 R = reflect(I, normalize(Normal));
+		FragColor = vec4(texture(skybox, R).rgb * reflectionCoef + diffuseColor, 1.0);
+	}
 }
