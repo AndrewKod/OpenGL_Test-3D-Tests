@@ -44,7 +44,8 @@ void main()
 	else
 	{
 		mat3 normalMatrix = mat3(transpose(inverse(view * model)));
-		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));
+		//vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));
+		vs_out.gs_normal =vec3(projection * vec4(normalMatrix * normal, 0.0));
 		//vs_out.gs_normal = normalize(vec3(projection * view * model * vec4(normal, 0.0)));
 	}
 
