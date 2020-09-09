@@ -2,10 +2,10 @@
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3) out;
 
-in VS_OUT {
-    vec2 gs_texCoords;
+in VS_OUT {    
 	vec3 gs_normal;
 
+	vec2 fs_texCoords;
 	vec3 fs_normal;
 	vec3 fs_position;
 
@@ -37,14 +37,14 @@ vec3 GetNormal()
 void main() {    
     vec3 tri_normal = GetNormal();
 
-	for(int i=0;i < 3;i++)
+	for(int i = 0; i < gs_in.length(); i++)
 	{ 
 		if(bExplode)
 			gl_Position = explode(gl_in[i].gl_Position, tri_normal);
 		else
 			gl_Position = gl_in[i].gl_Position;
 
-		TexCoords = gs_in[i].gs_texCoords;
+		TexCoords = gs_in[i].fs_texCoords;
 		Normal =	gs_in[i].fs_normal;
 		Position =	gs_in[i].fs_position;
 

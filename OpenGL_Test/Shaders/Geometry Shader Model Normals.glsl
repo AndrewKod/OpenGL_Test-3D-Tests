@@ -3,15 +3,15 @@ layout (triangles) in;
 layout (line_strip, max_vertices = 6) out;
 
 in VS_OUT {
-    vec2 gs_texCoords;
-	vec3 gs_normal;
+    vec3 gs_normal;
 
+	vec2 fs_texCoords;
 	vec3 fs_normal;
 	vec3 fs_position;
 
 } gs_in[];
 
-const float MAGNITUDE = 0.4;
+const float MAGNITUDE = 0.2;
 
 void GenerateLine(int index)
 {

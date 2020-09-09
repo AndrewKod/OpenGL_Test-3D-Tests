@@ -25,9 +25,9 @@ layout (std140) uniform Matrices
 };
 
 out VS_OUT {
-    vec2 gs_texCoords;
-	vec3 gs_normal;
+    vec3 gs_normal;
 
+	vec2 fs_texCoords;
 	vec3 fs_normal;
 	vec3 fs_position;
 
@@ -39,12 +39,13 @@ void main()
 	{
 		vs_out.fs_normal = mat3(transpose(inverse(model))) * normal;
 		vs_out.fs_position = vec3(model * vec4(position, 1.0));	
-		vs_out.gs_texCoords = texCoords;	
+		vs_out.fs_texCoords = texCoords;	
 	}
 	else
 	{
 		mat3 normalMatrix = mat3(transpose(inverse(view * model)));
 		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));
+		//vs_out.gs_normal = normalize(vec3(projection * view * model * vec4(normal, 0.0)));
 	}
 
     gl_Position = projection * view * model * vec4(position, 1.0);

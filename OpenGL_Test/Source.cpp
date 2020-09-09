@@ -292,8 +292,9 @@ int main()
 	/////////////////////////////////////MODEL////////////////////////////////////
 	Model model("Models/backpack/backpack.obj", cubemapTexture, 1.f, false);
 	modelShader.UseProgram();
-	glm::mat4 mod = glm::mat4(1.0f);
+	glm::mat4 mod = glm::mat4(1.0f);	
 	mod = glm::translate(mod, glm::vec3(2.0f, 2.0f, -3.0f));
+	mod = glm::rotate(mod, glm::radians( (GLfloat)glfwGetTime()), glm::vec3(1.0, 1.0, 1.0));
 	modelShader.SetMat4("model", mod);
 
 	modelShaderNormals.UseProgram();
@@ -341,6 +342,17 @@ int main()
 		DrawReflectCube(shader, reflectVAO, cubemapTexture, camera.Position);
 
 		DrawRefractCube(shader, reflectVAO, cubemapTexture, cubeTexture, camera.Position);
+
+		
+		/*glm::mat4 mod = glm::mat4(1.0f);		
+		mod = glm::translate(mod, glm::vec3(2.0f, 2.0f, -3.0f));
+		mod = glm::rotate(mod, glm::radians((GLfloat)glfwGetTime()*10), glm::vec3(1.0, 1.0, 1.0));
+		
+		modelShader.UseProgram();
+		modelShader.SetMat4("model", mod);
+
+		modelShaderNormals.UseProgram();
+		modelShaderNormals.SetMat4("model", mod);*/
 
 		//Draw model
 		modelShader.UseProgram();		
