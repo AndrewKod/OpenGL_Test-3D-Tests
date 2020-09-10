@@ -28,17 +28,21 @@ uniform vec3 cameraPos;
 
 uniform bool bShowNormals = false;
 
+uniform bool bReflect = false;
+
+uniform bool binvertUVs = false;
+
 void main()
 {   
 	if(bShowNormals)
 	{
 		FragColor = vec4(1.0, 1.0, 0.0, 1.0);
 	}
-	else
+	else if(bReflect)
 	{
 		vec3 resultColor = vec3(0.f);
 
-		vec2 invertedTexCoords = vec2(TexCoords.x, 1.0 - TexCoords.y);
+		vec2 invertedTexCoords = vec2(TexCoords.x, binvertUVs ? 1.0 - TexCoords.y : TexCoords.y);
 
 		vec3 diffuseColor = vec3(texture(material.diffuse[0], invertedTexCoords));
 		float reflectionCoef = texture(material.specular[0], invertedTexCoords).r;
@@ -46,5 +50,13 @@ void main()
 		vec3 I = normalize(Position - cameraPos);
 		vec3 R = reflect(I, normalize(Normal));
 		FragColor = vec4(texture(skybox, R).rgb * reflectionCoef + diffuseColor, 1.0);
+	}
+	else
+	{
+		vec2 invertedTexCoords = vec2(TexCoords.x, binvertUVs ? 1.0 - TexCoords.y : TexCoords.y);
+
+		vec3 diffuseColor = vec3(texture(material.diffuse[0], invertedTexCoords));
+		
+		FragColor = vec4(diffuseColor, 1.0);
 	}
 }

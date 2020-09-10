@@ -8,6 +8,9 @@ layout (location = 3) in vec3 normal;
 layout (location = 4) in vec3 tangent;
 layout (location = 5) in vec3 bitangent;
 
+//instanced arrays
+layout (location = 6) in mat4 instanceModelMatrix;
+
 //out vec2 TexCoords;
 //out vec3 Normal;
 //out vec3 Position;
@@ -17,6 +20,8 @@ uniform mat4 model;
 //uniform mat4 projection;
 
 uniform bool bShowNormals = false;
+
+uniform bool bInstanced = false;
 
 layout (std140) uniform Matrices
 {
@@ -47,6 +52,8 @@ void main()
 		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));		
 	}
 
-    gl_Position = projection * view * model * vec4(position, 1.0);
-	
+	if(bInstanced)
+		gl_Position = projection * view * instanceModelMatrix * vec4(position, 1.0);
+	else
+		gl_Position = projection * view * model * vec4(position, 1.0);
 }

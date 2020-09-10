@@ -105,6 +105,7 @@ public:
 
 			shader.SetInt("skybox", textures.size());
 		}
+		
 
 		//enable CW triangles order
 		if(!bCCWTris)
