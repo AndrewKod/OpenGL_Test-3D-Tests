@@ -241,6 +241,25 @@ int main()
     // -------------------------
 	GLuint samples = 4;
 
+	GLboolean bUseKernel = false;
+	GLboolean bAntiAliasing = false;
+	postProcShader.SetBool("bUseKernel", bUseKernel);
+	postProcShader.SetBool("bAntiAliasing", bAntiAliasing);
+
+	if (bUseKernel)
+	{
+		glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
+		postProcShader.SetVec2("uvOffset", uvOffset);
+	}
+
+	if (bAntiAliasing)
+	{
+		glDrawBuffer(GL_COLOR_ATTACHMENT1);
+		postProcShader.SetInt("samples", samples);
+	}
+	else
+		glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
     unsigned int framebuffer;
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -256,7 +275,8 @@ int main()
 	glGenTextures(1, &textureColorbufferMS);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbufferMS);
 	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB, SCR_WIDTH, SCR_HEIGHT, GL_TRUE);
-	
+	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	/////////////////////////////////////////////////////////////
 
     
@@ -276,21 +296,7 @@ int main()
         cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	GLboolean bUseKernel = false;
-	GLboolean bAntiAliasing = true;
-	postProcShader.SetBool("bUseKernel", bUseKernel);
-	postProcShader.SetBool("bAntiAliasing", bAntiAliasing);
-		 
-	if (bUseKernel)
-	{
-		glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
-		postProcShader.SetVec2("uvOffset", uvOffset);
-	}
-
-	if (bAntiAliasing)
-	{		
-		postProcShader.SetInt("samples", samples);
-	}
+	
 
 	//set model for first time 
 	//and update it then if necessary 
@@ -778,8 +784,11 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
 	
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, textureColorbufferMS);
+	if (bAntiAliasing)
+	{
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbufferMS);
+	}
 
 	if (bPPModelChanged)
 	{

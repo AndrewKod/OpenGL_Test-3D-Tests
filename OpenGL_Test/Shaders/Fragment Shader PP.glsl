@@ -27,7 +27,7 @@ void main()
 			ivec2 UV = ivec2(TexCoords);
 			for(int i = 0; i < samples; i++)
 			{
-				col += texelFetch(screenTexture, UV, i);
+				col += texelFetch(screenTextureMS, UV, i);
 			}
 		}
 	}
