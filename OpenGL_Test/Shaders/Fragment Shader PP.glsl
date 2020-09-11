@@ -4,10 +4,14 @@ out vec4 FragColor;
 in vec2 TexCoords;
 
 uniform sampler2D screenTexture;
+uniform sampler2DMS screenTextureMS;
 
-uniform bool bUseKernel;
+uniform bool bUseKernel = false;
 uniform float kernel[9];
 uniform vec2 uvOffset;
+
+uniform bool bAntiAliasing = false;
+uniform int samples = 0;
 
 void main()
 { 
@@ -15,7 +19,18 @@ void main()
 
 	vec4 col = vec4(0.0);
 	if(!bUseKernel)
-		col = texture(screenTexture, TexCoords);
+	{
+		if(!bAntiAliasing)
+			col = texture(screenTexture, TexCoords);
+		else
+		{		
+			ivec2 UV = ivec2(TexCoords);
+			for(int i = 0; i < samples; i++)
+			{
+				col += texelFetch(screenTexture, UV, i);
+			}
+		}
+	}
 	else
 	{	
 		int kernelID = 0;

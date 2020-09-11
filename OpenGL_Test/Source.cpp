@@ -107,7 +107,8 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
 	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture);
 
-void DrawPostProc(Shader & shader, GLuint VAO, GLuint texture, bool bUseKernel = false);
+void DrawPostProc(Shader & shader, GLuint VAO,
+	GLuint textureColorbuffer, GLuint textureColorbufferMS, bool bUseKernel = false, bool bAntiAliasing = false);
 void SetKernelValue(Shader & postProcShader, GLint cellID);
 void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLint sectorID);
 
@@ -234,8 +235,9 @@ int main()
 
 	postProcShader.UseProgram();
 	postProcShader.SetInt("screenTexture", 0);
+	postProcShader.SetInt("screenTextureMS", 1);
 
-    // framebuffer configuration
+    //////////////////////////////////////// framebuffer configuration /////////////////////////////////////
     // -------------------------
 	GLuint samples = 4;
 
@@ -245,20 +247,22 @@ int main()
     // create a color attachment texture
     unsigned int textureColorbuffer;
     glGenTextures(1, &textureColorbuffer);
-    //glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	//glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	////////////////////TEXTURE ANTI-ALIASING////////////////////
-	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbuffer);
+	GLuint textureColorbufferMS;
+	glGenTextures(1, &textureColorbufferMS);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbufferMS);
 	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB, SCR_WIDTH, SCR_HEIGHT, GL_TRUE);
-	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+	
 	/////////////////////////////////////////////////////////////
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+    
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
 	////////////////////TEXTURE ANTI-ALIASING////////////////////
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, textureColorbuffer, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, textureColorbufferMS, 0);
 	/////////////////////////////////////////////////////////////
 
     // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
@@ -273,12 +277,19 @@ int main()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	GLboolean bUseKernel = false;
+	GLboolean bAntiAliasing = true;
 	postProcShader.SetBool("bUseKernel", bUseKernel);
+	postProcShader.SetBool("bAntiAliasing", bAntiAliasing);
 		
 	if (bUseKernel)
 	{
 		glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
 		postProcShader.SetVec2("uvOffset", uvOffset);
+	}
+
+	if (bAntiAliasing)
+	{		
+		postProcShader.SetInt("samples", samples);
 	}
 
 	//set model for first time 
@@ -425,7 +436,7 @@ int main()
 		skullShader.SetBool("bInstanced", false);*/
 
 
-		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, bUseKernel);
+		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, bUseKernel, bAntiAliasing);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -757,7 +768,8 @@ void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLin
 	SetKernelValue(postProcShader, oppositeId);
 }
 
-void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureColorbuffer, bool bUseKernel)
+void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
+	GLuint textureColorbuffer, GLuint textureColorbufferMS, bool bUseKernel, bool bAntiAliasing)
 {
 	postProcShader.UseProgram();
 
@@ -766,6 +778,9 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO, GLuint textureCol
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
 	
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textureColorbufferMS);
+
 	if (bPPModelChanged)
 	{
 		postProcShader.SetMat4("model", postProcModel);
