@@ -133,6 +133,9 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+	////////////////////ANTI-ALIASING////////////////////
+	//glfwWindowHint(GLFW_SAMPLES, 4);
+
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
@@ -171,6 +174,9 @@ int main()
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_FRONT);
 	glFrontFace(GL_CCW);
+
+	////////////////////ANTI-ALIASING////////////////////
+	//glEnable(GL_MULTISAMPLE);
 
 
     // build and compile shaders
@@ -231,17 +237,30 @@ int main()
 
     // framebuffer configuration
     // -------------------------
+	GLuint samples = 4;
+
     unsigned int framebuffer;
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     // create a color attachment texture
     unsigned int textureColorbuffer;
     glGenTextures(1, &textureColorbuffer);
-    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    //glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	//glBindTexture(GL_TEXTURE_2D, 0);
+	////////////////////TEXTURE ANTI-ALIASING////////////////////
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbuffer);
+	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB, SCR_WIDTH, SCR_HEIGHT, GL_TRUE);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+	/////////////////////////////////////////////////////////////
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+	////////////////////TEXTURE ANTI-ALIASING////////////////////
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, textureColorbuffer, 0);
+	/////////////////////////////////////////////////////////////
+
     // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
     unsigned int rbo;
     glGenRenderbuffers(1, &rbo);
@@ -253,11 +272,14 @@ int main()
         cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	GLboolean bUseKernel = true;
+	GLboolean bUseKernel = false;
 	postProcShader.SetBool("bUseKernel", bUseKernel);
 		
-	glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
-	postProcShader.SetVec2("uvOffset", uvOffset);
+	if (bUseKernel)
+	{
+		glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
+		postProcShader.SetVec2("uvOffset", uvOffset);
+	}
 
 	//set model for first time 
 	//and update it then if necessary 
