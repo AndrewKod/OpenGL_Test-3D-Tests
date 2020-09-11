@@ -280,7 +280,7 @@ int main()
 	GLboolean bAntiAliasing = true;
 	postProcShader.SetBool("bUseKernel", bUseKernel);
 	postProcShader.SetBool("bAntiAliasing", bAntiAliasing);
-		
+		 
 	if (bUseKernel)
 	{
 		glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
