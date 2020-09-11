@@ -122,7 +122,7 @@ void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, GLuint testTex
 
 
 void FillModelMatrices(GLuint amount, glm::mat4 *modelMatrices);
-void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices);
+void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices, GLuint& modelMatricesVBO);
 
 int main()
 {
@@ -306,15 +306,17 @@ int main()
 
 	///////////////////////////////////INSTANCING//////////////////////////////////
 
-	Shader planetShader = modelShader;
+	/*Shader skullShader = modelShader;
 	
 	Model skull("Models/Skull/Skull.obj", 0, 1.f, false);
 
-	GLuint amount = 1001;
-	glm::mat4 *modelMatrices = nullptr;
+	GLuint modelMatricesVBO = 0;
+
+	GLuint amount = 51;
+	glm::mat4 *modelMatrices = new glm::mat4[amount];
 	FillModelMatrices(amount, modelMatrices);
 
-	UpdateVAO(skull, amount, modelMatrices);
+	UpdateVAO(skull, amount, modelMatrices, modelMatricesVBO);*/
 
 
 
@@ -392,16 +394,13 @@ int main()
 		modelShaderNormals.SetBool("binvertUVs", false);
 
 
-		// рендер планеты
-		planetShader.UseProgram();
-		glm::mat4 modelP(1.0f);
-		modelP = glm::translate(modelP, glm::vec3(0.0f, -3.0f, 0.0f));
-		modelP = glm::rotate(modelP,glm::radians(-90.f), glm::vec3(1.0f, 0.0f, 0.0f));
-		modelP = glm::scale(modelP, glm::vec3(1.0f, 1.0f, 1.0f));
-		planetShader.SetMat4("model", modelP);
-		planetShader.SetBool("binvertUVs", false);
-		skull.Draw(planetShader);
-		planetShader.SetBool("binvertUVs", true);
+		//render of planet and asteroids
+		/*skullShader.UseProgram();
+		skullShader.SetBool("binvertUVs", false);
+		skullShader.SetBool("bInstanced", true);
+		skull.Draw(skullShader, true, amount);
+		skullShader.SetBool("binvertUVs", true);
+		skullShader.SetBool("bInstanced", false);*/
 
 
 		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, bUseKernel);
@@ -432,7 +431,8 @@ int main()
 
 	glDeleteFramebuffers(1, &framebuffer);
 
-	delete modelMatrices;
+	//glDeleteBuffers(1, &modelMatricesVBO);
+	//delete[] modelMatrices;
 
     glfwTerminate();
     return 0;
@@ -449,7 +449,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 
 	glm::mat4 model = glm::mat4(1.0f);
 	glm::mat4 view = camera.GetViewMatrix();
-	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
 	
 	////////////////////////////////////////////UNIFORM BUFFER VALUES///////////////////////////////////////////////
 	glBindBuffer(GL_UNIFORM_BUFFER, uboBlock);
@@ -980,16 +980,20 @@ void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO)
 		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
 		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 	};
-
-	glGenVertexArrays(1, &cubeVAO);
 	glGenBuffers(1, &cubeVBO);
-	glBindVertexArray(cubeVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), &cubeVertices, GL_STATIC_DRAW);
+
+	glGenVertexArrays(1, &cubeVAO);
+	
+	glBindVertexArray(cubeVAO);
+	
+	
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glBindVertexArray(0);
 }
 
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
@@ -1014,6 +1018,7 @@ void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glBindVertexArray(0);
 }
 
 void GenPostProcVAO(GLuint& postProcVAO, GLuint& postProcVBO)
@@ -1039,6 +1044,7 @@ void GenPostProcVAO(GLuint& postProcVAO, GLuint& postProcVBO)
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	glBindVertexArray(0);
 }
 
 void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO)
@@ -1095,6 +1101,7 @@ void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO)
 	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glBindVertexArray(0);
 }
 
 void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO)
@@ -1158,15 +1165,15 @@ void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO)
 	//normal
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+	glBindVertexArray(0);
 }
 
 
-void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices)
+void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices, GLuint& modelMatricesVBO)
 {
-	// создаем VBO
-	unsigned int VBO;
-	glGenBuffers(1, &VBO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	// создаем VBO	
+	glGenBuffers(1, &modelMatricesVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, modelMatricesVBO);
 	glBufferData(GL_ARRAY_BUFFER, amount * sizeof(glm::mat4), &modelMatrices[0], GL_STATIC_DRAW);
 
 	for (unsigned int i = 0; i < model.meshes.size(); i++)
@@ -1175,19 +1182,19 @@ void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices)
 		glBindVertexArray(VAO);
 		// настройка атрибутов
 		GLsizei vec4Size = sizeof(glm::vec4);
-		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)0);
-		glEnableVertexAttribArray(4);
-		glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(vec4Size));
-		glEnableVertexAttribArray(5);
-		glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(2 * vec4Size));
 		glEnableVertexAttribArray(6);
-		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(3 * vec4Size));
+		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)0);
+		glEnableVertexAttribArray(7);
+		glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(vec4Size));
+		glEnableVertexAttribArray(8);
+		glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(2 * vec4Size));
+		glEnableVertexAttribArray(9);
+		glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(3 * vec4Size));
 
-		glVertexAttribDivisor(3, 1);
-		glVertexAttribDivisor(4, 1);
-		glVertexAttribDivisor(5, 1);
 		glVertexAttribDivisor(6, 1);
+		glVertexAttribDivisor(7, 1);
+		glVertexAttribDivisor(8, 1);
+		glVertexAttribDivisor(9, 1);
 
 		glBindVertexArray(0);
 	}
@@ -1197,8 +1204,6 @@ void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices)
 //modelMatrices[0] is planet model
 void FillModelMatrices(GLuint amount, glm::mat4 *modelMatrices)
 {
-	modelMatrices = new glm::mat4[amount];
-
 	glm::mat4 modelP(1.0f);
 	modelP = glm::translate(modelP, glm::vec3(0.0f, -3.0f, 0.0f));
 	modelP = glm::rotate(modelP, glm::radians(-90.f), glm::vec3(1.0f, 0.0f, 0.0f));

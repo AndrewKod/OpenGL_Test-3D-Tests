@@ -62,7 +62,7 @@ public:
 	}
 
 	// render the mesh
-	void Draw(Shader &shader)
+	void Draw(Shader &shader, GLboolean bInstanced = false, GLuint amount = 0)
 	{
 		shader.UseProgram();
 
@@ -112,7 +112,12 @@ public:
 			glFrontFace(GL_CW);
 		// draw mesh
 		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+		if(!bInstanced)
+			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+		else
+			glDrawElementsInstanced(
+				GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, amount
+			);
 		glBindVertexArray(0);
 		if (!bCCWTris)
 			glFrontFace(GL_CCW);
