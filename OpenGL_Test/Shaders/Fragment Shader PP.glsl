@@ -12,6 +12,7 @@ uniform vec2 uvOffset;
 
 uniform bool bAntiAliasing = false;
 uniform int samples = 0;
+uniform vec2 dimensions;//screenTextureMS width and height
 
 void main()
 { 
@@ -24,7 +25,8 @@ void main()
 			col = texture(screenTexture, TexCoords);
 		else
 		{		
-			ivec2 UV = ivec2(TexCoords);
+			ivec2 UV = ivec2(TexCoords*dimensions);			
+			
 			for(int i = 0; i < samples; i++)
 			{
 				col += texelFetch(screenTextureMS, UV, i);

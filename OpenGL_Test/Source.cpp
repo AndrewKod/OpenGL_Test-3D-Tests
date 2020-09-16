@@ -20,8 +20,8 @@ void processInput(GLFWwindow *window);
 unsigned int loadTexture(const char *path);
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+unsigned int SCR_WIDTH = 800;
+unsigned int SCR_HEIGHT = 600;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -111,6 +111,8 @@ void DrawPostProc(Shader & shader, GLuint VAO,
 	GLuint textureColorbuffer, GLuint textureColorbufferMS, bool bUseKernel = false, bool bAntiAliasing = false);
 void SetKernelValue(Shader & postProcShader, GLint cellID);
 void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLint sectorID);
+void SetupFrameBuffer(GLuint& colorBuffer, GLuint& renderBuffer);
+void SetupFrameBufferMS(GLuint& colorBuffer, GLuint& renderBuffer, GLint samples);
 
 void ScalePostProc();
 
@@ -144,6 +146,7 @@ int main()
     // glfw window creation
     // --------------------
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+	
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -260,50 +263,24 @@ int main()
     // create a color attachment texture
 	GLuint textureColorbuffer = 0;
 	GLuint textureColorbufferMS = 0;
-	GLuint rbo = 0;
+	GLuint renderBuffer = 0;
+	GLuint renderBufferMS = 0;
 
+	//Setup Frame Buffer
 	if (!bAntiAliasing)
 	{
-		glGenTextures(1, &textureColorbuffer);
-		glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);	
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
-		//glDrawBuffer(GL_COLOR_ATTACHMENT0);
-
-		// create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
-		GLuint rbo;
-		glGenRenderbuffers(1, &rbo);
-		glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
-
+		SetupFrameBuffer(textureColorbuffer, renderBuffer);
 	}
 	////////////////////TEXTURE ANTI-ALIASING////////////////////	
 	else
 	{
-		glGenTextures(1, &textureColorbufferMS);
-		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbufferMS);
-		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB, SCR_WIDTH, SCR_HEIGHT, GL_TRUE);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, textureColorbufferMS, 0);	
-	
-		//glDrawBuffer(GL_COLOR_ATTACHMENT1);
-
-
+		SetupFrameBufferMS(textureColorbufferMS, renderBufferMS, samples);
 
 		postProcShader.SetInt("samples", samples);
+		postProcShader.SetVec2("dimensions", glm::vec2(SCR_WIDTH, SCR_HEIGHT));
 	}
 	/////////////////////////////////////////////////////////////
 	
-    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
-    unsigned int rbo;
-    glGenRenderbuffers(1, &rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
     // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
     //if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         //cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
@@ -377,7 +354,7 @@ int main()
 	UpdateVAO(skull, amount, modelMatrices, modelMatricesVBO);*/
 
 
-
+	//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -451,7 +428,7 @@ int main()
 		modelShaderNormals.SetBool("bShowNormals", false);
 		modelShaderNormals.SetBool("binvertUVs", false);
 
-
+		///////////////////////////////////INSTANCING//////////////////////////////////
 		//render of planet and asteroids
 		/*skullShader.UseProgram();
 		skullShader.SetBool("binvertUVs", false);
@@ -658,7 +635,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
+	SCR_WIDTH = width;
+	SCR_HEIGHT = height;
+    glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 }
 
 // glfw: whenever the mouse moves, this callback is called
@@ -802,11 +781,13 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
-	
+	postProcShader.SetInt("screenTexture", 0);
+
 	if (bAntiAliasing)
 	{
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbufferMS);
+		postProcShader.SetInt("screenTextureMS", 1);
 	}
 
 	if (bPPModelChanged)
@@ -948,7 +929,7 @@ void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 came
 
 	glBindVertexArray(VAO);
 
-	glEnable(GL_TEXTURE_CUBE_MAP);
+	//glEnable(GL_TEXTURE_CUBE_MAP);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
 	shader.SetInt("skybox", 1);
@@ -1305,4 +1286,40 @@ void FillModelMatrices(GLuint amount, glm::mat4 *modelMatrices)
 		// 4. добавляем в массив матриц
 		modelMatrices[i] = model;
 	}
+}
+
+void SetupFrameBuffer(GLuint& colorBuffer, GLuint& renderBuffer)
+{
+	glGenTextures(1, &colorBuffer);
+	glBindTexture(GL_TEXTURE_2D, colorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
+	//glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+	// create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+	//GLuint rbo;
+	glGenRenderbuffers(1, &renderBuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, renderBuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBuffer); // now actually attach it
+
+}
+
+void SetupFrameBufferMS(GLuint& colorBufferMS, GLuint& renderBufferMS, GLint samples)
+{
+	glGenTextures(1, &colorBufferMS);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, colorBufferMS);
+	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB, SCR_WIDTH, SCR_HEIGHT, GL_TRUE);
+	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, colorBufferMS, 0);
+
+	//glDrawBuffer(GL_COLOR_ATTACHMENT1);
+
+	
+	glGenRenderbuffers(1, &renderBufferMS);
+	glBindRenderbuffer(GL_RENDERBUFFER, renderBufferMS);
+	glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
 }
