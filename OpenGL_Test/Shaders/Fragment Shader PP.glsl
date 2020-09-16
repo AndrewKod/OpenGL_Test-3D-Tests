@@ -29,11 +29,11 @@ void main()
 		{		
 			//for texelFetch() we need texel coordinates
 			ivec2 UV = ivec2(TexCoords*dimensions);			
-			
-			for(int i = 0; i < samples; i++)
-			{
-				col += texelFetch(screenTextureMS, UV, i);
-			}
+			col = texelFetch(screenTextureMS, UV, 0);
+//			for(int i = 0; i < samples; i++)
+//			{
+//				col += texelFetch(screenTextureMS, UV, i);
+//			}
 		}
 	}
 	else

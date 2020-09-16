@@ -371,15 +371,16 @@ int main()
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
-			cubeTexture, floorTexture, cubemapTexture);
+		/*DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
+			cubeTexture, floorTexture, cubemapTexture);*/
 
 
 		/////////////////////////////////////////////////FRAME BUFFER///////////////////////////////////////////////
         // render
         // ------
         // bind to framebuffer and draw scene as we normally would to color texture 
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);				
+		
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -387,7 +388,12 @@ int main()
 			cubeTexture, floorTexture, cubemapTexture);
 
         // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
         //glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
         // clear all relevant buffers
         //glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
@@ -437,8 +443,9 @@ int main()
 		skullShader.SetBool("binvertUVs", true);
 		skullShader.SetBool("bInstanced", false);*/
 
+		
 
-		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, bUseKernel, bAntiAliasing);
+		//DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, bUseKernel, bAntiAliasing);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
