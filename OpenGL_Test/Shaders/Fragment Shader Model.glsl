@@ -69,7 +69,7 @@ void main()
 	if(bGammaCorrection)
 	{
 		float gamma = 2.2;
-		col = pow(col, vec4(gamma));
+		col = pow(col, vec4(1.0/gamma));
 	}
 	FragColor = col;
 }

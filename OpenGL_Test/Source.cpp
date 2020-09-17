@@ -205,6 +205,8 @@ int main()
 	////////////////////ANTI-ALIASING////////////////////
 	//glEnable(GL_MULTISAMPLE);
 
+	////////////////////GAMMA-CORRECTION////////////////////
+	//glEnable(GL_FRAMEBUFFER_SRGB);
 
     // build and compile shaders
     // -------------------------
