@@ -16,8 +16,9 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void processInput(GLFWwindow *window);
-unsigned int loadTexture(const char *path);
+unsigned int loadTexture(const char *path, bool bSRGB = false);
 
 // settings
 unsigned int SCR_WIDTH = 800;
@@ -90,6 +91,25 @@ GLint sectorsToCells[sectorsSize] = {
 	 8
 };
 
+bool bLoadSRGB = false;
+
+GLuint uboSettings = 0;
+	
+struct Settings
+{
+	GLint bGammaCorrection = false;//g
+	
+	void UpdateSettings()
+	{
+		glBindBuffer(GL_UNIFORM_BUFFER, uboSettings);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLint), &bGammaCorrection);
+		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &projection[0][0]);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+} 
+settings;
+
+
 void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO);
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO);
 void GenPostProcVAO(GLuint& postProcVAO, GLuint& postProcVBO);
@@ -118,7 +138,7 @@ void SetupFrameBufferMS(GLuint& framebuffer, GLuint& colorBuffer, GLuint& render
 
 void ScalePostProc();
 
-GLuint loadCubemap(const vector<std::string>& faces);
+GLuint loadCubemap(const vector<std::string>& faces, bool bSRGB = false);
 void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, const glm::mat4& view, const glm::mat4& projection);
 
 
@@ -159,6 +179,7 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
+	glfwSetKeyCallback(window, key_callback);
 
     // tell GLFW to capture our mouse
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -209,13 +230,34 @@ int main()
 		0,				//binding point
 		uboBlock);		//uniform buffer ID
 
-	//postProc and skybox shaders are not need uniform buffer
+	//postProc and skybox shaders are not need this uniform buffer
 	shader.BindUniformBuffer(
 		"Matrices",		//uniform block name
 		0);				//binding point
 	
 	modelShader.BindUniformBuffer("Matrices", 0);
 	modelShaderNormals.BindUniformBuffer("Matrices", 0);
+
+	/////////////////////////////////////SETTINGS UNIFORM BUFFER////////////////////////////////////	
+	glGenBuffers(1, &uboSettings);
+	glBindBuffer(GL_UNIFORM_BUFFER, uboSettings);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(Settings), NULL, GL_STATIC_DRAW); 
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBufferBase(
+		GL_UNIFORM_BUFFER,
+		1,					//binding point
+		uboSettings);		//uniform buffer ID
+	
+	shader.BindUniformBuffer(
+		"Settings",		//uniform block name
+		1);				//binding point
+
+	modelShader.BindUniformBuffer("Settings", 1);
+	modelShaderNormals.BindUniformBuffer("Settings", 1);
+	postProcShader.BindUniformBuffer("Settings", 1);
+	skyboxShader.BindUniformBuffer("Settings", 1);
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     // cube VAO
     GLuint cubeVAO, cubeVBO;
@@ -230,8 +272,8 @@ int main()
 
     // load textures
     // -------------
-    unsigned int cubeTexture = loadTexture("Textures/container.jpg");
-    unsigned int floorTexture = loadTexture("Textures/matrix.jpg");
+    unsigned int cubeTexture = loadTexture("Textures/container.jpg", bLoadSRGB);
+    unsigned int floorTexture = loadTexture("Textures/matrix.jpg", bLoadSRGB);
 
     // shader configuration
     // --------------------
@@ -325,7 +367,7 @@ int main()
 		"Cube Textures/skybox/back.jpg"
 
 	};
-	GLuint cubemapTexture = loadCubemap(faces);
+	GLuint cubemapTexture = loadCubemap(faces, bLoadSRGB);
 
 	// skybox VAO
 	GLuint skyboxVAO, skyboxVBO;
@@ -650,6 +692,17 @@ void processInput(GLFWwindow *window)
 		ScalePostProc();
 		bPPModelChanged = true;
 	}
+	
+}
+
+//* Use key_callback if single press needs
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
+{
+	if (key == GLFW_KEY_G && action == GLFW_PRESS)
+	{
+		settings.bGammaCorrection = !settings.bGammaCorrection;
+		settings.UpdateSettings();
+	}
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -694,7 +747,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 
 // utility function for loading a 2D texture from file
 // ---------------------------------------------------
-unsigned int loadTexture(char const * path)
+unsigned int loadTexture(char const * path, bool bSRGB)
 {
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -704,15 +757,25 @@ unsigned int loadTexture(char const * path)
     if (data)
     {
         GLenum format;
-        if (nrComponents == 1)
-            format = GL_RED;
-        else if (nrComponents == 3)
-            format = GL_RGB;
-        else if (nrComponents == 4)
-            format = GL_RGBA;
+		GLenum internalFormat;
+		if (nrComponents == 1)
+		{
+			format = GL_RED;
+			internalFormat = GL_RED;
+		}
+		else if (nrComponents == 3)
+		{
+			format = GL_RGB;
+			internalFormat = bSRGB ? GL_SRGB : GL_RGB;
+		}
+		else if (nrComponents == 4)
+		{
+			format = GL_RGBA;
+			internalFormat = bSRGB ? GL_SRGB_ALPHA : GL_RGBA;
+		}
 
         glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -901,7 +964,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
 	glBindVertexArray(0);
 }
 
-GLuint loadCubemap(const vector<std::string>& faces)
+GLuint loadCubemap(const vector<std::string>& faces, bool bSRGB)
 {
 	GLuint textureID;
 	glGenTextures(1, &textureID);
@@ -913,8 +976,9 @@ GLuint loadCubemap(const vector<std::string>& faces)
 		unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
 		if (data)
 		{
+			GLenum internalFormat = bSRGB ? GL_SRGB : GL_RGB;
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+				0, internalFormat, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
 			);
 			stbi_image_free(data);
 		}

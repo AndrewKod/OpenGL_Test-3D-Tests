@@ -17,25 +17,32 @@ uniform bool bRefract = false;
 
 uniform vec3 cameraPos;
 
+layout (std140) uniform Settings
+{
+	bool bGammaCorrection;       
+};
+
 void main()
 {   
+	vec4 col = vec4(0.0);
+
 	if(bReflect)
 	{
 		vec3 I = normalize(Position - cameraPos);
 		vec3 R = reflect(I, normalize(Normal));
-		FragColor = vec4(texture(skybox, R).rgb, 1.0);
-		/*FragColor = texture(texture1,vec2(TexCoords.x, 1.0 - TexCoords.y));*/
+		col = vec4(texture(skybox, R).rgb, 1.0);
+		/*col = texture(texture1,vec2(TexCoords.x, 1.0 - TexCoords.y));*/
 	}
 	else if(bRefract)
 	{
 		float ratio = 1.00 / 1.52;
 		vec3 I = normalize(Position - cameraPos);
 		vec3 R = refract(I, normalize(Normal), ratio);
-		FragColor = vec4(texture(skybox, R).rgb, 1.0);
+		col = vec4(texture(skybox, R).rgb, 1.0);
 	}
 	else if(bStencil)
 	{
-		FragColor = borderColor;
+		col = borderColor;
 	}	
 	else
 	{
@@ -43,6 +50,13 @@ void main()
 		if(texColor.a < 0.1)
 			discard;
 
-		FragColor = texColor;
+		col = texColor;
 	}
+
+	if(bGammaCorrection)
+	{
+		float gamma = 2.2;
+		col = pow(col, vec4(gamma));
+	}
+	FragColor = col;
 }

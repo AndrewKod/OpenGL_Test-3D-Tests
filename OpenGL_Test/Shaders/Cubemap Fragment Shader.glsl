@@ -5,7 +5,21 @@ in vec3 TexCoords;
 
 uniform samplerCube skybox;
 
+layout (std140) uniform Settings
+{
+	bool bGammaCorrection;       
+};
+
+
 void main()
 {    
-    FragColor = texture(skybox, TexCoords);
+	vec4 col = vec4(0.0);
+    col = texture(skybox, TexCoords);
+
+	if(bGammaCorrection)
+	{
+		float gamma = 2.2;
+		col = pow(col, vec4(gamma));
+	}
+	FragColor = col;
 }

@@ -32,11 +32,17 @@ uniform bool bReflect = false;
 
 uniform bool binvertUVs = false;
 
+layout (std140) uniform Settings
+{
+	bool bGammaCorrection;       
+};
+
 void main()
 {   
+	vec4 col = vec4(0.0);
 	if(bShowNormals)
 	{
-		FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+		col = vec4(1.0, 1.0, 0.0, 1.0);
 	}
 	else if(bReflect)
 	{
@@ -49,7 +55,7 @@ void main()
 
 		vec3 I = normalize(Position - cameraPos);
 		vec3 R = reflect(I, normalize(Normal));
-		FragColor = vec4(texture(skybox, R).rgb * reflectionCoef + diffuseColor, 1.0);
+		col = vec4(texture(skybox, R).rgb * reflectionCoef + diffuseColor, 1.0);
 	}
 	else
 	{
@@ -57,6 +63,13 @@ void main()
 
 		vec3 diffuseColor = vec3(texture(material.diffuse[0], invertedTexCoords));
 		
-		FragColor = vec4(diffuseColor, 1.0);
+		col = vec4(diffuseColor, 1.0);
 	}
+
+	if(bGammaCorrection)
+	{
+		float gamma = 2.2;
+		col = pow(col, vec4(gamma));
+	}
+	FragColor = col;
 }

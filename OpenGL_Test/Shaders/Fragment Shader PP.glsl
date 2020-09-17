@@ -17,6 +17,12 @@ uniform int samples = 0;
 //screenTextureMS width and height
 uniform vec2 dimensions;
 
+layout (std140) uniform Settings
+{
+	bool bGammaCorrection;       
+};
+
+
 void main()
 { 
 	gl_FragDepth = 0.0;
@@ -55,6 +61,12 @@ void main()
 				kernelID++;				
 			}
 		}			
+	}
+
+	if(bGammaCorrection)
+	{
+		float gamma = 2.2;
+		col = pow(col, vec4(gamma));
 	}
 	FragColor = col;
 }
