@@ -11,6 +11,7 @@ uniform float kernel[9];
 uniform vec2 uvOffset;
 
 uniform bool bAntiAliasing = false;
+uniform bool bBlit = false;
 uniform int samples = 0;
 
 //screenTextureMS width and height
@@ -27,13 +28,20 @@ void main()
 			col = texture(screenTexture, TexCoords);
 		else
 		{		
-			//for texelFetch() we need texel coordinates
-			ivec2 UV = ivec2(TexCoords*dimensions);			
-			col = texelFetch(screenTextureMS, UV, 0);
-//			for(int i = 0; i < samples; i++)
-//			{
-//				col += texelFetch(screenTextureMS, UV, i);
-//			}
+			if(!bBlit)
+			{
+				//for texelFetch() we need texel coordinates
+				ivec2 UV = ivec2(TexCoords*dimensions);			
+				col = texelFetch(screenTextureMS, UV, 0);
+	//			for(int i = 0; i < samples; i++)
+	//			{
+	//				col += texelFetch(screenTextureMS, UV, i);
+	//			}
+			}
+			else
+			{
+				col = texture(screenTexture, TexCoords);
+			}
 		}
 	}
 	else

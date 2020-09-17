@@ -108,11 +108,13 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture);
 
 void DrawPostProc(Shader & shader, GLuint VAO,
-	GLuint textureColorbuffer, GLuint textureColorbufferMS, bool bUseKernel = false, bool bAntiAliasing = false);
+	GLuint textureColorbuffer, GLuint textureColorbufferMS, GLuint screenBlitTexture,
+	bool bUseKernel = false, bool bAntiAliasing = false, bool bBlit = false);
 void SetKernelValue(Shader & postProcShader, GLint cellID);
 void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLint sectorID);
-void SetupFrameBuffer(GLuint& colorBuffer, GLuint& renderBuffer);
-void SetupFrameBufferMS(GLuint& colorBuffer, GLuint& renderBuffer, GLint samples);
+void SetupFrameBuffer(GLuint& framebuffer, GLuint& colorBuffer, GLuint& renderBuffer);
+void SetupFrameBufferMS(GLuint& framebuffer, GLuint& colorBuffer, GLuint& renderBuffer, GLint samples,
+	GLuint& intermediateFBO, GLuint& screenTexture);
 
 void ScalePostProc();
 
@@ -245,9 +247,12 @@ int main()
 	GLuint samples = 4;
 
 	GLboolean bUseKernel = false;
-	GLboolean bAntiAliasing = true;
 	postProcShader.SetBool("bUseKernel", bUseKernel);
+	
+	GLboolean bAntiAliasing = true;
+	GLboolean bBlit = true;	
 	postProcShader.SetBool("bAntiAliasing", bAntiAliasing);
+	postProcShader.SetBool("bBlit", bBlit);
 
 	if (bUseKernel)
 	{
@@ -257,40 +262,44 @@ int main()
 
 	
 
-    unsigned int framebuffer;
-    glGenFramebuffers(1, &framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	GLuint framebuffer = 0;
+    
     // create a color attachment texture
 	GLuint textureColorbuffer = 0;
 	GLuint textureColorbufferMS = 0;
 	GLuint renderBuffer = 0;
 	GLuint renderBufferMS = 0;
 
+	///////////////////////BlitFramebuffer/////////////////////
+	//second post-processing framebuffer
+	GLuint intermediateFBO = 0;
+	//color attachment texture
+	GLuint screenBlitTexture = 0;
+
 	//Setup Frame Buffer
 	if (!bAntiAliasing)
 	{
-		SetupFrameBuffer(textureColorbuffer, renderBuffer);
+		SetupFrameBuffer(framebuffer, textureColorbuffer, renderBuffer);
 	}
 	////////////////////TEXTURE ANTI-ALIASING////////////////////	
 	else
 	{
-		SetupFrameBufferMS(textureColorbufferMS, renderBufferMS, samples);
+		//reset booleans 
+		bUseKernel = false;				
+		postProcShader.SetBool("bUseKernel", bUseKernel);	
+		bBlit = true;
+		postProcShader.SetBool("bBlit", bBlit);
+
+		SetupFrameBufferMS(framebuffer, textureColorbufferMS, renderBufferMS, samples,
+			intermediateFBO, screenBlitTexture);
 
 		postProcShader.SetInt("samples", samples);
 		postProcShader.SetVec2("dimensions", glm::vec2(SCR_WIDTH, SCR_HEIGHT));
 	}
 	/////////////////////////////////////////////////////////////
 	
-    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
-    //if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        //cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
-
-	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-
-	if (Status != GL_FRAMEBUFFER_COMPLETE) {
-		cout << "ERROR::FRAMEBUFFER::"<< Status << endl;		
-	}
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+	
 
 	
 
@@ -371,8 +380,8 @@ int main()
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		/*DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
-			cubeTexture, floorTexture, cubemapTexture);*/
+		DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
+			cubeTexture, floorTexture, cubemapTexture);
 
 
 		/////////////////////////////////////////////////FRAME BUFFER///////////////////////////////////////////////
@@ -388,11 +397,17 @@ int main()
 			cubeTexture, floorTexture, cubemapTexture);
 
         // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+		if (bAntiAliasing)
+		{
+			// 2. now blit multisampled buffer(s) to normal colorbuffer of intermediate FBO. Image is stored in screenTexture
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBO);
+			glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-		glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		}
+			
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
 
         //glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
         // clear all relevant buffers
@@ -445,7 +460,8 @@ int main()
 
 		
 
-		//DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, bUseKernel, bAntiAliasing);
+		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture,
+			bUseKernel, bAntiAliasing, bBlit);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -780,14 +796,18 @@ void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLin
 }
 
 void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
-	GLuint textureColorbuffer, GLuint textureColorbufferMS, bool bUseKernel, bool bAntiAliasing)
+	GLuint textureColorbuffer, GLuint textureColorbufferMS, GLuint screenBlitTexture,
+	bool bUseKernel, bool bAntiAliasing, bool bBlit)
 {
 	postProcShader.UseProgram();
 
 	glBindVertexArray(postProcVAO);
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
+	if(!bBlit)
+		glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
+	else
+		glBindTexture(GL_TEXTURE_2D, screenBlitTexture);
 	postProcShader.SetInt("screenTexture", 0);
 
 	if (bAntiAliasing)
@@ -795,6 +815,11 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbufferMS);
 		postProcShader.SetInt("screenTextureMS", 1);
+
+		if (bBlit)
+		{
+
+		}
 	}
 
 	if (bPPModelChanged)
@@ -1295,8 +1320,11 @@ void FillModelMatrices(GLuint amount, glm::mat4 *modelMatrices)
 	}
 }
 
-void SetupFrameBuffer(GLuint& colorBuffer, GLuint& renderBuffer)
+void SetupFrameBuffer(GLuint& framebuffer, GLuint& colorBuffer, GLuint& renderBuffer)
 {
+	glGenFramebuffers(1, &framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
 	glGenTextures(1, &colorBuffer);
 	glBindTexture(GL_TEXTURE_2D, colorBuffer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
@@ -1312,10 +1340,21 @@ void SetupFrameBuffer(GLuint& colorBuffer, GLuint& renderBuffer)
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBuffer); // now actually attach it
 
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		cout << "ERROR::FRAMEBUFFER::" << Status << endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 }
 
-void SetupFrameBufferMS(GLuint& colorBufferMS, GLuint& renderBufferMS, GLint samples)
+void SetupFrameBufferMS(GLuint& framebuffer, GLuint& colorBufferMS, GLuint& renderBufferMS, GLint samples,
+	GLuint& intermediateFBO, GLuint& screenTexture)
 {
+	glGenFramebuffers(1, &framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
 	glGenTextures(1, &colorBufferMS);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, colorBufferMS);
 	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB, SCR_WIDTH, SCR_HEIGHT, GL_TRUE);
@@ -1330,5 +1369,32 @@ void SetupFrameBufferMS(GLuint& colorBufferMS, GLuint& renderBufferMS, GLint sam
 	glBindRenderbuffer(GL_RENDERBUFFER, renderBufferMS);
 	glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferMS); // now actually attach it
+
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		cout << "ERROR::FRAMEBUFFER::" << Status << endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+
+	//intermediateFBO setup
+	glGenFramebuffers(1, &intermediateFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, intermediateFBO);
+
+	glGenTextures(1, &screenTexture);
+	glBindTexture(GL_TEXTURE_2D, screenTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screenTexture, 0);	// we only need a color buffer
+
+	Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		cout << "ERROR::FRAMEBUFFER::" << Status << endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 }
