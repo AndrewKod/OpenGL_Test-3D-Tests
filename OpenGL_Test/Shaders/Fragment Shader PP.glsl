@@ -19,7 +19,7 @@ uniform vec2 dimensions;
 
 layout (std140) uniform Settings
 {
-	bool bGammaCorrection;       
+	bool bGammaCorrection;       //Post Proc shader do not needs gamma-correction
 };
 
 
@@ -62,11 +62,11 @@ void main()
 			}
 		}			
 	}
-
-	if(bGammaCorrection)
-	{
-		float gamma = 2.2;
-		col = pow(col, vec4(1.0/gamma));
-	}
+	//Post Proc shader do not needs gamma-correction
+//	if(bGammaCorrection)
+//	{
+//		float gamma = 2.2;
+//		col = pow(col, vec4(1.0/gamma));
+//	}
 	FragColor = col;
 }

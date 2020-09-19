@@ -13,6 +13,21 @@
 
 #include <iostream>
 
+
+/////////////////////////////SETTINGS////////////////////////////////
+//Gamma-correction				G
+//Instancing					I
+//Show Normals					N
+//Post Process Sobel Effect		P
+//Shadows						O
+//Anti-Aliasing					U
+//
+/////////////////////////////////////////////////////////////////////
+
+
+
+
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
@@ -95,18 +110,37 @@ bool bLoadSRGB = false;
 
 GLuint uboSettings = 0;
 	
+/////////////////////////////SETTINGS////////////////////////////////
+//Gamma-correction				G
+//Instancing					I
+//Show Normals					N
+//Post Process Sobel Effect		P
+//Shadows						O
+//Anti-Aliasing					U
+//
+/////////////////////////////////////////////////////////////////////
+
 struct Settings
 {
-	GLint bGammaCorrection = false;//g
-	
+	GLint bGammaCorrection =	false;//G
+	GLint bInstancing =			false;//I
+	GLint bShowNormals =		false;//N
+	GLint bPostProcess =		false;//P
+	GLint bShadows =			false;//O
+	GLint bAntiAliasing =		false;//U
+
 	void UpdateSettings()
 	{
 		glBindBuffer(GL_UNIFORM_BUFFER, uboSettings);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLint), &bGammaCorrection);
-		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &projection[0][0]);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bGammaCorrection),	sizeof(GLint), &bGammaCorrection);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bInstancing),			sizeof(GLint), &bInstancing);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShowNormals),		sizeof(GLint), &bShowNormals);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bPostProcess),		sizeof(GLint), &bPostProcess);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShadows),			sizeof(GLint), &bShadows);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bAntiAliasing),		sizeof(GLint), &bAntiAliasing);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
-} 
+}
 settings;
 
 
@@ -274,8 +308,8 @@ int main()
 
     // load textures
     // -------------
-    unsigned int cubeTexture = loadTexture("Textures/container.jpg", bLoadSRGB);
-    unsigned int floorTexture = loadTexture("Textures/matrix.jpg", bLoadSRGB);
+    unsigned int cubeTexture = loadTexture("Textures/container2.png", bLoadSRGB);
+    unsigned int floorTexture = loadTexture("Textures/container.jpg", bLoadSRGB);
 
     // shader configuration
     // --------------------
@@ -290,19 +324,22 @@ int main()
     // -------------------------
 	GLuint samples = 4;
 
-	GLboolean bUseKernel = false;
-	postProcShader.SetBool("bUseKernel", bUseKernel);
+	//GLboolean bUseKernel = false;
 	
-	GLboolean bAntiAliasing = true;
-	GLboolean bBlit = true;	
+	
+	GLboolean bAntiAliasing = false;
+	GLboolean bBlit = false;	
 	postProcShader.SetBool("bAntiAliasing", bAntiAliasing);
 	postProcShader.SetBool("bBlit", bBlit);
 
-	if (bUseKernel)
-	{
-		glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
+	glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
+	postProcShader.SetVec2("uvOffset", uvOffset);
+
+	/*if (settings.bPostProcess)
+	{		
+		postProcShader.SetBool("bUseKernel", settings.bPostProcess);
 		postProcShader.SetVec2("uvOffset", uvOffset);
-	}
+	}*/
 
 	
 
@@ -329,8 +366,8 @@ int main()
 	else
 	{
 		//reset booleans 
-		bUseKernel = false;				
-		postProcShader.SetBool("bUseKernel", bUseKernel);	
+		//bUseKernel = false;				
+		//postProcShader.SetBool("bUseKernel", settings.bPostProcess);
 		bBlit = true;
 		postProcShader.SetBool("bBlit", bBlit);
 
@@ -394,7 +431,7 @@ int main()
 
 	///////////////////////////////////INSTANCING//////////////////////////////////
 
-	/*Shader skullShader = modelShader;
+	Shader skullShader = modelShader;
 	
 	Model skull("Models/Skull/Skull.obj", 0, 1.f, false);
 
@@ -404,7 +441,7 @@ int main()
 	glm::mat4 *modelMatrices = new glm::mat4[amount];
 	FillModelMatrices(amount, modelMatrices);
 
-	UpdateVAO(skull, amount, modelMatrices, modelMatricesVBO);*/
+	UpdateVAO(skull, amount, modelMatrices, modelMatricesVBO);
 
 
 	//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
@@ -486,26 +523,34 @@ int main()
 		modelShader.SetBool("binvertUVs", false);
 
 		//Draw model normals
-		modelShaderNormals.UseProgram();
-		modelShaderNormals.SetBool("bShowNormals", true);
-		modelShaderNormals.SetBool("binvertUVs", true);
-		model.Draw(modelShaderNormals);
-		modelShaderNormals.SetBool("bShowNormals", false);
-		modelShaderNormals.SetBool("binvertUVs", false);
+		if (settings.bShowNormals)
+		{
+			modelShaderNormals.UseProgram();
+			modelShaderNormals.SetBool("bShowNormals", true);
+			modelShaderNormals.SetBool("binvertUVs", true);
+			model.Draw(modelShaderNormals);
+			modelShaderNormals.SetBool("bShowNormals", false);
+			modelShaderNormals.SetBool("binvertUVs", false);
+		}
 
 		///////////////////////////////////INSTANCING//////////////////////////////////
 		//render of planet and asteroids
-		/*skullShader.UseProgram();
-		skullShader.SetBool("binvertUVs", false);
-		skullShader.SetBool("bInstanced", true);
-		skull.Draw(skullShader, true, amount);
-		skullShader.SetBool("binvertUVs", true);
-		skullShader.SetBool("bInstanced", false);*/
+		if (settings.bInstancing)
+		{
+			skullShader.UseProgram();
+			skullShader.SetBool("binvertUVs", false);
+			skullShader.SetBool("bInstanced", true);
+			skull.Draw(skullShader, true, amount);
+			skullShader.SetBool("binvertUVs", true);
+			skullShader.SetBool("bInstanced", false);
+		}
 
 		
-
+		postProcShader.UseProgram();
+		postProcShader.SetBool("bUseKernel", settings.bPostProcess);	
+		
 		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture,
-			bUseKernel, bAntiAliasing, bBlit);
+			settings.bPostProcess, bAntiAliasing, bBlit);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -700,9 +745,36 @@ void processInput(GLFWwindow *window)
 //* Use key_callback if single press needs
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
+	
+
 	if (key == GLFW_KEY_G && action == GLFW_PRESS)
 	{
 		settings.bGammaCorrection = !settings.bGammaCorrection;
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_I && action == GLFW_PRESS)
+	{
+		settings.bInstancing = !settings.bInstancing;
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_N && action == GLFW_PRESS)
+	{
+		settings.bShowNormals = !settings.bShowNormals;
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_P && action == GLFW_PRESS)
+	{
+		settings.bPostProcess = !settings.bPostProcess;
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_O && action == GLFW_PRESS)
+	{
+		settings.bShadows = !settings.bShadows;
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_U && action == GLFW_PRESS)
+	{
+		settings.bAntiAliasing = !settings.bAntiAliasing;
 		settings.UpdateSettings();
 	}
 }
