@@ -127,7 +127,11 @@ struct Settings
 	GLint bShowNormals =		false;//N
 	GLint bPostProcess =		false;//P
 	GLint bShadows =			false;//O
+
 	GLint bAntiAliasing =		false;//U
+	GLint bBlit =				false;
+
+
 
 	void UpdateSettings()
 	{
@@ -138,6 +142,7 @@ struct Settings
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bPostProcess),		sizeof(GLint), &bPostProcess);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShadows),			sizeof(GLint), &bShadows);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bAntiAliasing),		sizeof(GLint), &bAntiAliasing);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bBlit),				sizeof(GLint), &bBlit);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 }
@@ -162,8 +167,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture);
 
 void DrawPostProc(Shader & shader, GLuint VAO,
-	GLuint textureColorbuffer, GLuint textureColorbufferMS, GLuint screenBlitTexture,
-	bool bUseKernel = false, bool bAntiAliasing = false, bool bBlit = false);
+	GLuint textureColorbuffer, GLuint textureColorbufferMS, GLuint screenBlitTexture);
 void SetKernelValue(Shader & postProcShader, GLint cellID);
 void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLint sectorID);
 void SetupFrameBuffer(GLuint& framebuffer, GLuint& colorBuffer, GLuint& renderBuffer);
@@ -324,26 +328,11 @@ int main()
     // -------------------------
 	GLuint samples = 4;
 
-	//GLboolean bUseKernel = false;
-	
-	
-	GLboolean bAntiAliasing = false;
-	GLboolean bBlit = false;	
-	postProcShader.SetBool("bAntiAliasing", bAntiAliasing);
-	postProcShader.SetBool("bBlit", bBlit);
-
 	glm::vec2 uvOffset(1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
-	postProcShader.SetVec2("uvOffset", uvOffset);
-
-	/*if (settings.bPostProcess)
-	{		
-		postProcShader.SetBool("bUseKernel", settings.bPostProcess);
-		postProcShader.SetVec2("uvOffset", uvOffset);
-	}*/
-
-	
+	postProcShader.SetVec2("uvOffset", uvOffset);	
 
 	GLuint framebuffer = 0;
+	GLuint framebufferAA = 0;
     
     // create a color attachment texture
 	GLuint textureColorbuffer = 0;
@@ -357,26 +346,17 @@ int main()
 	//color attachment texture
 	GLuint screenBlitTexture = 0;
 
-	//Setup Frame Buffer
-	if (!bAntiAliasing)
-	{
-		SetupFrameBuffer(framebuffer, textureColorbuffer, renderBuffer);
-	}
-	////////////////////TEXTURE ANTI-ALIASING////////////////////	
-	else
-	{
-		//reset booleans 
-		//bUseKernel = false;				
-		//postProcShader.SetBool("bUseKernel", settings.bPostProcess);
-		bBlit = true;
-		postProcShader.SetBool("bBlit", bBlit);
+	//Setup Frame Buffer	
+	SetupFrameBuffer(framebuffer, textureColorbuffer, renderBuffer);
+	
+	////////////////////TEXTURE ANTI-ALIASING////////////////////		
 
-		SetupFrameBufferMS(framebuffer, textureColorbufferMS, renderBufferMS, samples,
-			intermediateFBO, screenBlitTexture);
+	SetupFrameBufferMS(framebufferAA, textureColorbufferMS, renderBufferMS, samples,
+		intermediateFBO, screenBlitTexture);
 
-		postProcShader.SetInt("samples", samples);
-		postProcShader.SetVec2("dimensions", glm::vec2(SCR_WIDTH, SCR_HEIGHT));
-	}
+	postProcShader.SetInt("samples", samples);
+	postProcShader.SetVec2("dimensions", glm::vec2(SCR_WIDTH, SCR_HEIGHT));
+	
 	/////////////////////////////////////////////////////////////
 	
     
@@ -470,7 +450,7 @@ int main()
         // ------
         // bind to framebuffer and draw scene as we normally would to color texture 
 		
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, settings.bAntiAliasing? framebufferAA : framebuffer);
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -478,10 +458,10 @@ int main()
 			cubeTexture, floorTexture, cubemapTexture);
 
         // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
-		if (bAntiAliasing)
+		if (settings.bAntiAliasing)
 		{
 			// 2. now blit multisampled buffer(s) to normal colorbuffer of intermediate FBO. Image is stored in screenTexture
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferAA);
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBO);
 			glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
@@ -522,7 +502,7 @@ int main()
 		modelShader.SetBool("bReflect", false);
 		modelShader.SetBool("binvertUVs", false);
 
-		//Draw model normals
+		///////////////////////////////Draw model normals//////////////////////////////
 		if (settings.bShowNormals)
 		{
 			modelShaderNormals.UseProgram();
@@ -545,12 +525,13 @@ int main()
 			skullShader.SetBool("bInstanced", false);
 		}
 
-		
+		//////////////////////////////////POST PROCESS EFFECT//////////////////////////
 		postProcShader.UseProgram();
 		postProcShader.SetBool("bUseKernel", settings.bPostProcess);	
+		postProcShader.SetBool("bAntiAliasing", settings.bAntiAliasing);
+		postProcShader.SetBool("bBlit", settings.bBlit);
 		
-		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture,
-			settings.bPostProcess, bAntiAliasing, bBlit);
+		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -577,6 +558,8 @@ int main()
 
 
 	glDeleteFramebuffers(1, &framebuffer);
+	glDeleteFramebuffers(1, &intermediateFBO);
+	glDeleteFramebuffers(1, &framebufferAA);
 
 	//glDeleteBuffers(1, &modelMatricesVBO);
 	//delete[] modelMatrices;
@@ -765,6 +748,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_P && action == GLFW_PRESS)
 	{
 		settings.bPostProcess = !settings.bPostProcess;
+		if (settings.bPostProcess)
+		{
+			settings.bAntiAliasing = false;
+			settings.bBlit = false;
+		}
 		settings.UpdateSettings();
 	}
 	if (key == GLFW_KEY_O && action == GLFW_PRESS)
@@ -775,6 +763,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_U && action == GLFW_PRESS)
 	{
 		settings.bAntiAliasing = !settings.bAntiAliasing;
+		if (settings.bAntiAliasing)
+		{
+			settings.bBlit = true;
+			settings.bPostProcess = false;
+		}
 		settings.UpdateSettings();
 	}
 }
@@ -933,27 +926,26 @@ void SetCellValue(Shader & postProcShader, GLint cellID, GLfloat cellValue, GLin
 }
 
 void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
-	GLuint textureColorbuffer, GLuint textureColorbufferMS, GLuint screenBlitTexture,
-	bool bUseKernel, bool bAntiAliasing, bool bBlit)
+	GLuint textureColorbuffer, GLuint textureColorbufferMS, GLuint screenBlitTexture)
 {
 	postProcShader.UseProgram();
 
 	glBindVertexArray(postProcVAO);
 
 	glActiveTexture(GL_TEXTURE0);
-	if(!bBlit)
+	if(!settings.bBlit)
 		glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
 	else
 		glBindTexture(GL_TEXTURE_2D, screenBlitTexture);
 	postProcShader.SetInt("screenTexture", 0);
 
-	if (bAntiAliasing)
+	if (settings.bAntiAliasing)
 	{
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbufferMS);
 		postProcShader.SetInt("screenTextureMS", 1);
 
-		if (bBlit)
+		if (settings.bBlit)
 		{
 
 		}
@@ -965,7 +957,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
 		bPPModelChanged = false;
 	}
 	
-	if (bUseKernel)
+	if (settings.bPostProcess)
 	{
 		
 
