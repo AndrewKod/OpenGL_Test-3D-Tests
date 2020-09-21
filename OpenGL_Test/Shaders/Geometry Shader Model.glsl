@@ -9,11 +9,14 @@ in VS_OUT {
 	vec3 fs_normal;
 	vec3 fs_position;
 
+	vec3 fs_fragPos;
+
 } gs_in[];
 
 out vec2 TexCoords;
 out vec3 Normal;
 out vec3 Position;
+out vec3 FragPos;/*fragment shader's fragment coords*/
 
 
 uniform float time;
@@ -47,6 +50,8 @@ void main() {
 		TexCoords = gs_in[i].fs_texCoords;
 		Normal =	gs_in[i].fs_normal;
 		Position =	gs_in[i].fs_position;
+
+		FragPos =	gs_in[i].fs_fragPos;
 
 		EmitVertex();
 	}

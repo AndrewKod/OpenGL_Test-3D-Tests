@@ -36,6 +36,8 @@ out VS_OUT {
 	vec3 fs_normal;
 	vec3 fs_position;
 
+	vec3 fs_fragPos;
+
 } vs_out;
 
 void main()
@@ -51,6 +53,8 @@ void main()
 		mat3 normalMatrix = mat3(transpose(inverse(view * model)));
 		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));		
 	}
+
+	vs_out.fs_fragPos = vec3(view * model * vec4(position, 1.0f));
 
 	if(bInstanced)
 		gl_Position = projection * view * instanceModelMatrix * vec4(position, 1.0);

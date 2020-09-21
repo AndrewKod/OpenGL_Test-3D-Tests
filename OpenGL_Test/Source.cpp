@@ -126,6 +126,11 @@ struct Settings
 	GLint bInstancing =			false;//I
 	GLint bShowNormals =		false;//N
 	GLint bPostProcess =		false;//P
+
+	GLint bPointLights =		false;//1
+	GLint bDirectionalLight =	false;//2
+	GLint bSpotLight =			false;//3
+
 	GLint bShadows =			false;//O
 
 	GLint bAntiAliasing =		false;//U
@@ -140,6 +145,9 @@ struct Settings
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bInstancing),			sizeof(GLint), &bInstancing);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShowNormals),		sizeof(GLint), &bShowNormals);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bPostProcess),		sizeof(GLint), &bPostProcess);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bPointLights),		sizeof(GLint), &bPointLights);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bDirectionalLight),	sizeof(GLint), &bDirectionalLight);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bSpotLight),			sizeof(GLint), &bSpotLight);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShadows),			sizeof(GLint), &bShadows);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bAntiAliasing),		sizeof(GLint), &bAntiAliasing);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bBlit),				sizeof(GLint), &bBlit);
@@ -755,17 +763,45 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		}
 		settings.UpdateSettings();
 	}
+	if (key == GLFW_KEY_1 && action == GLFW_PRESS)
+	{
+		settings.bPointLights = !settings.bPointLights;
+		//do not using shadows without lights
+		if (!(settings.bPointLights || settings.bDirectionalLight || settings.bSpotLight))
+			settings.bShadows = false;
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_2 && action == GLFW_PRESS)
+	{
+		settings.bDirectionalLight = !settings.bDirectionalLight;
+		//do not using shadows without lights
+		if (!(settings.bPointLights || settings.bDirectionalLight || settings.bSpotLight))
+			settings.bShadows = false;
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_3 && action == GLFW_PRESS)
+	{
+		settings.bSpotLight = !settings.bSpotLight;
+		//do not using shadows without lights
+		if (!(settings.bPointLights || settings.bDirectionalLight || settings.bSpotLight))
+			settings.bShadows = false;
+		settings.UpdateSettings();
+	}
 	if (key == GLFW_KEY_O && action == GLFW_PRESS)
 	{
-		settings.bShadows = !settings.bShadows;
-		settings.UpdateSettings();
+		//do not using shadows without lights
+		if (!(settings.bPointLights || settings.bDirectionalLight || settings.bSpotLight))
+		{
+			settings.bShadows = !settings.bShadows;
+			settings.UpdateSettings();
+		}
 	}
 	if (key == GLFW_KEY_U && action == GLFW_PRESS)
 	{
 		settings.bAntiAliasing = !settings.bAntiAliasing;
+		settings.bBlit = settings.bAntiAliasing;
 		if (settings.bAntiAliasing)
-		{
-			settings.bBlit = true;
+		{			
 			settings.bPostProcess = false;
 		}
 		settings.UpdateSettings();
