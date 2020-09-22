@@ -82,7 +82,7 @@ uniform vec4 borderColor;
 uniform samplerCube skybox;
 uniform vec3 cameraPos;
 
-uniform bool bShowNormals = false;
+
 
 uniform bool bReflect = false;
 uniform bool bRefract = false;
@@ -92,6 +92,19 @@ uniform bool binvertUVs = false;
 layout (std140) uniform Settings
 {
 	bool bGammaCorrection;       
+	bool bInstancing;
+	bool bShowNormals;
+	bool bExplode;
+	bool bPostProcess;
+
+	bool bAntiAliasing;
+	bool bBlit;
+
+	bool bPointLights;
+	bool bDirectionalLight;
+	bool bSpotLight;
+
+	bool bShadows;
 };
 
 void main()
@@ -131,22 +144,22 @@ void main()
 		vec3 norm = normalize(Normal);	
 		vec3 viewDir = normalize(cameraPos - FragPos);
 
-		col = vec4(diffuseColor, 1.0);
+		//col = vec4(diffuseColor, 1.0);
 
-//		//Directional light
-//		vec3 dirLigtColor = CalcDirLight(norm, viewDir, diffuseColor, specularColor);
-//		col += vec4(dirLigtColor, 1.0);
-//
-//		//Point Light
-//		for(int lightId = 0; lightId < NUM_POINT_LIGHTS; lightId++)
-//		{
-//			vec3 pointLightColor = CalcPointLight(lightId, norm, viewDir, diffuseColor, specularColor);
-//			col += vec4(pointLightColor, 1.0);
-//		}	
-//
-//		//Spot Light
-//		vec3 spotLightColor = CalcSpotLight(norm, viewDir, diffuseColor, specularColor);
-//		col += vec4(spotLightColor, 1.0);		
+		//Directional light
+		vec3 dirLigtColor = CalcDirLight(norm, viewDir, diffuseColor, specularColor);
+		col += vec4(dirLigtColor, 1.0);
+
+		//Point Light
+		for(int lightId = 0; lightId < NUM_POINT_LIGHTS; lightId++)
+		{
+			vec3 pointLightColor = CalcPointLight(lightId, norm, viewDir, diffuseColor, specularColor);
+			col += vec4(pointLightColor, 1.0);
+		}	
+
+		//Spot Light
+		vec3 spotLightColor = CalcSpotLight(norm, viewDir, diffuseColor, specularColor);
+		col += vec4(spotLightColor, 1.0);		
 		
 	}
 

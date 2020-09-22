@@ -19,9 +19,23 @@ uniform mat4 model;
 //uniform mat4 view;
 //uniform mat4 projection;
 
-uniform bool bShowNormals = false;
+layout (std140) uniform Settings
+{
+	bool bGammaCorrection;       
+	bool bInstancing;
+	bool bShowNormals;
+	bool bExplode;
+	bool bPostProcess;
 
-uniform bool bInstanced = false;
+	bool bAntiAliasing;
+	bool bBlit;
+
+	bool bPointLights;
+	bool bDirectionalLight;
+	bool bSpotLight;
+
+	bool bShadows;
+};
 
 layout (std140) uniform Matrices
 {
@@ -56,7 +70,7 @@ void main()
 
 	vs_out.fs_fragPos = vec3(model * vec4(position, 1.0f));
 
-	if(bInstanced)
+	if(bInstancing)
 		gl_Position = projection * view * instanceModelMatrix * vec4(position, 1.0);
 	else
 		gl_Position = projection * view * model * vec4(position, 1.0);

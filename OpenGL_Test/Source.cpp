@@ -126,18 +126,16 @@ struct Settings
 	GLint bInstancing =			false;//I
 	GLint bShowNormals =		false;//N
 	GLint bExplode =			false;//M
-	GLint bPostProcess =		false;//P
+	GLint bPostProcess =		false;//P	
+
+	GLint bAntiAliasing =		false;//U
+	GLint bBlit =				false;
 
 	GLint bPointLights =		false;//1
 	GLint bDirectionalLight =	false;//2
 	GLint bSpotLight =			false;//3
 
 	GLint bShadows =			false;//O
-
-	GLint bAntiAliasing =		false;//U
-	GLint bBlit =				false;
-
-
 
 	void UpdateSettings()
 	{
@@ -146,12 +144,12 @@ struct Settings
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bInstancing),			sizeof(GLint), &bInstancing);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShowNormals),		sizeof(GLint), &bShowNormals);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bPostProcess),		sizeof(GLint), &bPostProcess);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bAntiAliasing),		sizeof(GLint), &bAntiAliasing);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bBlit),				sizeof(GLint), &bBlit);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bPointLights),		sizeof(GLint), &bPointLights);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bDirectionalLight),	sizeof(GLint), &bDirectionalLight);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bSpotLight),			sizeof(GLint), &bSpotLight);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShadows),			sizeof(GLint), &bShadows);
-		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bAntiAliasing),		sizeof(GLint), &bAntiAliasing);
-		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bBlit),				sizeof(GLint), &bBlit);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 }
@@ -162,12 +160,11 @@ void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO);
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO);
 void GenPostProcVAO(GLuint& postProcVAO, GLuint& postProcVBO);
 void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO);
-void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO);
 
 
 void DrawCubes(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTexture,
 	glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false, glm::vec4 borderColor = glm::vec4(0.f));
-void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
+void DrawFloor(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTexture = 0);
 
 void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vector<glm::vec3>& positions, bool bSortPositions);
 
@@ -412,9 +409,7 @@ int main()
 	GenSkyboxVAO(skyboxVAO, skyboxVBO);
 	
 	/////////////////////////////////////////////////REFLECT CUBEMAP//////////////////////////////////////////
-	GLuint reflectVAO, reflectVBO;
-	GenReflectVAO(reflectVAO, reflectVBO);
-
+	
 
 	/////////////////////////////////////MODEL////////////////////////////////////
 	Model model("Models/backpack/backpack.obj", cubemapTexture, 1.f, false);
@@ -430,12 +425,15 @@ int main()
 
 
 	///////////////////////////////////////LIGHTS////////////////////////////////////
+
+	shader.UseProgram();
 	/////////directed light
 	shader.SetVec3("directionalLight.direction", -0.2f, -1.0f, -0.3f);
 	shader.SetVec3("directionalLight.ambient", 0.15f, 0.15f, 0.15f);
 	shader.SetVec3("directionalLight.diffuse", 0.5f, 0.5f, 0.5f); // darken the light a bit to fit the scene
 	shader.SetVec3("directionalLight.specular", 0.5f, 0.5f, 0.5f);
 
+	modelShader.UseProgram();
 	/////////directed light
 	modelShader.SetVec3("directionalLight.direction", -0.2f, -1.0f, -0.3f);
 	modelShader.SetVec3("directionalLight.ambient", 0.15f, 0.15f, 0.15f);
@@ -512,9 +510,9 @@ int main()
         //glClear(GL_COLOR_BUFFER_BIT);
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
-		DrawReflectCube(shader, reflectVAO, cubemapTexture, cubeTexture, cubeSpecTexture, camera.Position);
+		DrawReflectCube(shader, cubeVAO, cubemapTexture, cubeTexture, cubeSpecTexture, camera.Position);
 
-		DrawRefractCube(shader, reflectVAO, cubemapTexture, camera.Position);
+		DrawRefractCube(shader, cubeVAO, cubemapTexture, camera.Position);
 
 		
 		/*glm::mat4 mod = glm::mat4(1.0f);		
@@ -588,8 +586,7 @@ int main()
 	glDeleteVertexArrays(1, &skyboxVAO);
 	glDeleteBuffers(1, &skyboxVBO);
 
-	glDeleteVertexArrays(1, &reflectVAO);
-	glDeleteBuffers(1, &reflectVBO);
+	
 
 
 
@@ -804,7 +801,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		settings.bPointLights = !settings.bPointLights;
 		//do not using shadows without lights
-		if (!(settings.bPointLights || settings.bDirectionalLight || settings.bSpotLight))
+		if (!(settings.bPointLights || settings.bDirectionalLight))
 			settings.bShadows = false;
 		settings.UpdateSettings();
 	}
@@ -812,7 +809,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		settings.bDirectionalLight = !settings.bDirectionalLight;
 		//do not using shadows without lights
-		if (!(settings.bPointLights || settings.bDirectionalLight || settings.bSpotLight))
+		if (!(settings.bPointLights || settings.bDirectionalLight))
 			settings.bShadows = false;
 		settings.UpdateSettings();
 	}
@@ -820,14 +817,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		settings.bSpotLight = !settings.bSpotLight;
 		//do not using shadows without lights
-		if (!(settings.bPointLights || settings.bDirectionalLight || settings.bSpotLight))
+		if (!(settings.bPointLights || settings.bDirectionalLight))
 			settings.bShadows = false;
 		settings.UpdateSettings();
 	}
 	if (key == GLFW_KEY_O && action == GLFW_PRESS)
 	{
 		//do not using shadows without lights
-		if (!(settings.bPointLights || settings.bDirectionalLight || settings.bSpotLight))
+		if (!(settings.bPointLights || settings.bDirectionalLight))
 		{
 			settings.bShadows = !settings.bShadows;
 			settings.UpdateSettings();
@@ -968,15 +965,19 @@ void DrawCubes(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTextu
 	shader.SetBool("bStencil", false);
 }
 
-void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
+void DrawFloor(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTexture)
 {
 	shader.UseProgram();
 
 	glBindVertexArray(VAO);
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glBindTexture(GL_TEXTURE_2D, diffTexture);
 	shader.SetInt("material.diffuse[0]", 0);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, specTexture);
+	shader.SetInt("material.specular[0]", 1);
 
 	shader.SetMat4("model", glm::mat4(1.0f));
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -1183,14 +1184,14 @@ void DrawReflectCube(Shader & shader, GLuint VAO,
 	shader.SetInt("skybox", 2);
 	
 	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(2.0f, 2.0f, 0.0f));	
+	model = glm::translate(model, glm::vec3(2.0f, 5.0f, 0.0f));	
 	shader.SetMat4("model", model);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 
 	glBindVertexArray(0);
 
 	shader.SetBool("bReflect", false);
-	/*shader.SetBool("bReflectF", false);*/
+	
 	glEnable(GL_TEXTURE_2D);
 }
 
@@ -1210,13 +1211,14 @@ void DrawRefractCube(Shader & shader, GLuint VAO, GLuint cubeMapTexture, glm::ve
 	shader.SetInt("skybox", 2);
 
 	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(0.0f, 2.0f, 0.0f));
+	model = glm::translate(model, glm::vec3(0.0f, 5.0f, 0.0f));
 	shader.SetMat4("model", model);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 
 	glBindVertexArray(0);
 
 	shader.SetBool("bRefract", false);
+
 	glEnable(GL_TEXTURE_2D);
 }
 
@@ -1398,69 +1400,7 @@ void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO)
 	glBindVertexArray(0);
 }
 
-void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO)
-{
-	float reflectVertices[] = {
-		// positions			// texture Coords	 //normals
-		-0.5f, -0.5f, -0.5f,	0.0f, 0.0f,			 0.0f,  0.0f, -1.0f,//back
-		 0.5f, -0.5f, -0.5f,	1.0f, 0.0f,			 0.0f,  0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 0.0f,  0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 0.0f,  0.0f, -1.0f,
-		-0.5f,  0.5f, -0.5f,	0.0f, 1.0f,			 0.0f,  0.0f, -1.0f,
-		-0.5f, -0.5f, -0.5f,	0.0f, 0.0f,			 0.0f,  0.0f, -1.0f,
 
-		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 0.0f,  0.0f,  1.0f,//front         
-		 0.5f,  0.5f,  0.5f,	1.0f, 1.0f,			 0.0f,  0.0f,  1.0f,
-		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,			 0.0f,  0.0f,  1.0f,
-		 0.5f,  0.5f,  0.5f,	1.0f, 1.0f,			 0.0f,  0.0f,  1.0f,
-		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 0.0f,  0.0f,  1.0f,
-		-0.5f,  0.5f,  0.5f,	0.0f, 1.0f,			 0.0f,  0.0f,  1.0f,
-
-		-0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			-1.0f,  0.0f,  0.0f,//left        
-		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			-1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			-1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			-1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			-1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			-1.0f,  0.0f,  0.0f,
-
-		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 1.0f,  0.0f,  0.0f,//right
-		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 1.0f,  0.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 1.0f,  0.0f,  0.0f,
-
-		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 0.0f, -1.0f,  0.0f,//bot         
-		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,			 0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,	1.0f, 1.0f,			 0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,			 0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 0.0f, -1.0f,  0.0f,
-
-		-0.5f,  0.5f, -0.5f,	0.0f, 1.0f,			 0.0f,  1.0f,  0.0f,//top
-		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f,	0.0f, 0.0f,			 0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f,	0.0f, 1.0f,			 0.0f,  1.0f,  0.0f
-	};
-
-	glGenVertexArrays(1, &reflectVAO);
-	glGenBuffers(1, &reflectVBO);
-	glBindVertexArray(reflectVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, reflectVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(reflectVertices), &reflectVertices, GL_STATIC_DRAW);
-	//pos
-	glEnableVertexAttribArray(0);	
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	//UV
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	//normal
-	glEnableVertexAttribArray(3);
-	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
-	glBindVertexArray(0);
-}
 
 
 void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices, GLuint& modelMatricesVBO)
