@@ -194,6 +194,10 @@ void DrawRefractCube(Shader & shader, GLuint VAO, GLuint cubeMapTexture, glm::ve
 void FillModelMatrices(GLuint amount, glm::mat4 *modelMatrices);
 void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices, GLuint& modelMatricesVBO);
 
+void AddDirectedLight(Shader shaders[], GLint arrSize);
+void AddPointLights(Shader shaders[], GLint arrSize);
+void AddSpotLight(Shader shaders[], GLint arrSize);
+
 int main()
 {
     // glfw: initialize and configure
@@ -426,19 +430,9 @@ int main()
 
 	///////////////////////////////////////LIGHTS////////////////////////////////////
 
-	shader.UseProgram();
-	/////////directed light
-	shader.SetVec3("directionalLight.direction", -0.2f, -1.0f, -0.3f);
-	shader.SetVec3("directionalLight.ambient", 0.15f, 0.15f, 0.15f);
-	shader.SetVec3("directionalLight.diffuse", 0.5f, 0.5f, 0.5f); // darken the light a bit to fit the scene
-	shader.SetVec3("directionalLight.specular", 0.5f, 0.5f, 0.5f);
+	Shader shaders[]{ shader, modelShader };
 
-	modelShader.UseProgram();
-	/////////directed light
-	modelShader.SetVec3("directionalLight.direction", -0.2f, -1.0f, -0.3f);
-	modelShader.SetVec3("directionalLight.ambient", 0.15f, 0.15f, 0.15f);
-	modelShader.SetVec3("directionalLight.diffuse", 0.5f, 0.5f, 0.5f); // darken the light a bit to fit the scene
-	modelShader.SetVec3("directionalLight.specular", 0.5f, 0.5f, 0.5f);
+	AddDirectedLight(shaders, 2);
 
 
 	///////////////////////////////////INSTANCING//////////////////////////////////
@@ -567,6 +561,16 @@ int main()
 		
 		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
 
+
+		//////////////////////////////////////LIGHTS//////////////////////////////////
+		if(settings.bDirectionalLight)
+			AddDirectedLight(shaders, 2);
+
+		if (settings.bPointLights)
+			AddPointLights(shaders, 2);
+
+		if (settings.bSpotLight)
+			AddSpotLight(shaders, 2);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -1553,4 +1557,49 @@ void SetupFrameBufferMS(GLuint& framebuffer, GLuint& colorBufferMS, GLuint& rend
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+}
+
+void AddDirectedLight(Shader shaders[], GLint arrSize)
+{
+	for (GLint i = 0; i < arrSize; i++)
+	{
+		shaders[i].UseProgram();
+		/////////directed light
+		shaders[i].SetVec3("directionalLight.direction", -0.2f, -1.0f, -0.3f);
+		shaders[i].SetVec3("directionalLight.ambient", 0.15f, 0.15f, 0.15f);
+		shaders[i].SetVec3("directionalLight.diffuse", 0.5f, 0.5f, 0.5f); // darken the light a bit to fit the scene
+		shaders[i].SetVec3("directionalLight.specular", 0.5f, 0.5f, 0.5f);
+	}
+}
+void AddPointLights(Shader shaders[], GLint arrSize)
+{
+	for (GLint i = 0; i < arrSize; i++)
+	{
+		shaders[i].UseProgram();
+		/////////point lights
+		shaders[i].SetFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+		shaders[i].SetFloat("spotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
+
+		shaders[i].SetVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+		shaders[i].SetVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f); // darken the light a bit to fit the scene
+		shaders[i].SetVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+	}
+}
+void AddSpotLight(Shader shaders[], GLint arrSize)
+{
+	for (GLint i = 0; i < arrSize; i++)
+	{
+		shaders[i].UseProgram();
+		/////////spot light
+		shaders[i].SetVec3("spotLight.position", camera.Position);
+		shaders[i].SetVec3("spotLight.direction", camera.Front);
+
+		
+		shaders[i].SetFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+		shaders[i].SetFloat("spotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
+
+		shaders[i].SetVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+		shaders[i].SetVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f); // darken the light a bit to fit the scene
+		shaders[i].SetVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+	}
 }

@@ -144,22 +144,33 @@ void main()
 		vec3 norm = normalize(Normal);	
 		vec3 viewDir = normalize(cameraPos - FragPos);
 
-		//col = vec4(diffuseColor, 1.0);
+		if(!(bPointLights || bDirectionalLight || bSpotLight))
+			col = vec4(diffuseColor, 1.0);
 
+		
 		//Directional light
-		vec3 dirLigtColor = CalcDirLight(norm, viewDir, diffuseColor, specularColor);
-		col += vec4(dirLigtColor, 1.0);
+		if(bDirectionalLight)
+		{
+			vec3 dirLigtColor = CalcDirLight(norm, viewDir, diffuseColor, specularColor);
+			col += vec4(dirLigtColor, 1.0);
+		}
 
 		//Point Light
-		for(int lightId = 0; lightId < NUM_POINT_LIGHTS; lightId++)
-		{
-			vec3 pointLightColor = CalcPointLight(lightId, norm, viewDir, diffuseColor, specularColor);
-			col += vec4(pointLightColor, 1.0);
-		}	
+		if(bPointLights)
+		{			
+			for(int lightId = 0; lightId < NUM_POINT_LIGHTS; lightId++)
+			{
+				vec3 pointLightColor = CalcPointLight(lightId, norm, viewDir, diffuseColor, specularColor);
+				col += vec4(pointLightColor, 1.0);
+			}	
+		}
 
 		//Spot Light
-		vec3 spotLightColor = CalcSpotLight(norm, viewDir, diffuseColor, specularColor);
-		col += vec4(spotLightColor, 1.0);		
+		if(bSpotLight)
+		{
+			vec3 spotLightColor = CalcSpotLight(norm, viewDir, diffuseColor, specularColor);
+			col += vec4(spotLightColor, 1.0);	
+		}
 		
 	}
 
