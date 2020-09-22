@@ -125,6 +125,7 @@ struct Settings
 	GLint bGammaCorrection =	false;//G
 	GLint bInstancing =			false;//I
 	GLint bShowNormals =		false;//N
+	GLint bExplode =			false;//M
 	GLint bPostProcess =		false;//P
 
 	GLint bPointLights =		false;//1
@@ -164,15 +165,15 @@ void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO);
 void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO);
 
 
-void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale = glm::vec3(1.0f),
-	bool bStencil = false, glm::vec4 borderColor = glm::vec4(0.f));
+void DrawCubes(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTexture,
+	glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false, glm::vec4 borderColor = glm::vec4(0.f));
 void DrawFloor(Shader & shader, GLuint VAO, GLuint texture);
 
 void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vector<glm::vec3>& positions, bool bSortPositions);
 
 void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
-	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture);
+	GLuint cubeDiffTexture, GLuint cubeSpecTexture, GLuint floorTexture, GLuint cubemapTexture);
 
 void DrawPostProc(Shader & shader, GLuint VAO,
 	GLuint textureColorbuffer, GLuint textureColorbufferMS, GLuint screenBlitTexture);
@@ -188,8 +189,9 @@ GLuint loadCubemap(const vector<std::string>& faces, bool bSRGB = false);
 void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, const glm::mat4& view, const glm::mat4& projection);
 
 
-void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 cameraPos);
-void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, GLuint testTex, glm::vec3 cameraPos);
+void DrawReflectCube(Shader & shader, GLuint VAO,
+	GLuint cubeMapTexture, GLuint cubeDiffTexture, GLuint cubeSpecTexture, glm::vec3 cameraPos);
+void DrawRefractCube(Shader & shader, GLuint VAO, GLuint cubeMapTexture, glm::vec3 cameraPos);
 
 
 void FillModelMatrices(GLuint amount, glm::mat4 *modelMatrices);
@@ -256,7 +258,10 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader shader("Shaders/Vertex Shader.glsl", "Shaders/Fragment Shader.glsl");
+	
+    Shader shader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
+		"Shaders/Geometry Shader Model.glsl");
+
     Shader postProcShader("Shaders/Vertex Shader PP.glsl", "Shaders/Fragment Shader PP.glsl");
 	Shader skyboxShader("Shaders/Cubemap Vertex Shader.glsl", "Shaders/Cubemap Fragment Shader.glsl");
 	 
@@ -320,13 +325,19 @@ int main()
 
     // load textures
     // -------------
-    unsigned int cubeTexture = loadTexture("Textures/container2.png", bLoadSRGB);
-    unsigned int floorTexture = loadTexture("Textures/container.jpg", bLoadSRGB);
+	GLuint cubeTexture = loadTexture("Textures/container2.png", bLoadSRGB);
+	GLuint cubeSpecTexture = loadTexture("Textures/container2_specular.png");
+	GLuint floorTexture = loadTexture("Textures/container.jpg", bLoadSRGB);
 
     // shader configuration
     // --------------------
     shader.UseProgram();
-    shader.SetInt("texture1", 0);
+    shader.SetInt("material.diffuse[0]", 0);
+	shader.SetInt("material.specular[0]", 1);
+	shader.SetFloat("material.shininess", 32.f);
+
+	modelShader.UseProgram();
+	modelShader.SetFloat("material.shininess", 32.f);
 
 	postProcShader.UseProgram();
 	postProcShader.SetInt("screenTexture", 0);
@@ -411,10 +422,25 @@ int main()
 	glm::mat4 mod = glm::mat4(1.0f);	
 	mod = glm::translate(mod, glm::vec3(2.0f, 2.0f, -3.0f));
 	mod = glm::rotate(mod, glm::radians( (GLfloat)glfwGetTime()), glm::vec3(1.0, 1.0, 1.0));
-	modelShader.SetMat4("model", mod);
+	modelShader.SetMat4("model", mod);	
+
 
 	modelShaderNormals.UseProgram();
 	modelShaderNormals.SetMat4("model", mod);
+
+
+	///////////////////////////////////////LIGHTS////////////////////////////////////
+	/////////directed light
+	shader.SetVec3("directionalLight.direction", -0.2f, -1.0f, -0.3f);
+	shader.SetVec3("directionalLight.ambient", 0.15f, 0.15f, 0.15f);
+	shader.SetVec3("directionalLight.diffuse", 0.5f, 0.5f, 0.5f); // darken the light a bit to fit the scene
+	shader.SetVec3("directionalLight.specular", 0.5f, 0.5f, 0.5f);
+
+	/////////directed light
+	modelShader.SetVec3("directionalLight.direction", -0.2f, -1.0f, -0.3f);
+	modelShader.SetVec3("directionalLight.ambient", 0.15f, 0.15f, 0.15f);
+	modelShader.SetVec3("directionalLight.diffuse", 0.5f, 0.5f, 0.5f); // darken the light a bit to fit the scene
+	modelShader.SetVec3("directionalLight.specular", 0.5f, 0.5f, 0.5f);
 
 
 	///////////////////////////////////INSTANCING//////////////////////////////////
@@ -431,6 +457,8 @@ int main()
 
 	UpdateVAO(skull, amount, modelMatrices, modelMatricesVBO);
 
+
+	
 
 	//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     // render loop
@@ -450,7 +478,7 @@ int main()
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
-			cubeTexture, floorTexture, cubemapTexture);
+			cubeTexture, cubeSpecTexture, floorTexture, cubemapTexture);
 
 
 		/////////////////////////////////////////////////FRAME BUFFER///////////////////////////////////////////////
@@ -463,7 +491,7 @@ int main()
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
-			cubeTexture, floorTexture, cubemapTexture);
+			cubeTexture, cubeSpecTexture, floorTexture, cubemapTexture);
 
         // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
 		if (settings.bAntiAliasing)
@@ -484,9 +512,9 @@ int main()
         //glClear(GL_COLOR_BUFFER_BIT);
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
-		DrawReflectCube(shader, reflectVAO, cubemapTexture, camera.Position);
+		DrawReflectCube(shader, reflectVAO, cubemapTexture, cubeTexture, cubeSpecTexture, camera.Position);
 
-		DrawRefractCube(shader, reflectVAO, cubemapTexture, cubeTexture, camera.Position);
+		DrawRefractCube(shader, reflectVAO, cubemapTexture, camera.Position);
 
 		
 		/*glm::mat4 mod = glm::mat4(1.0f);		
@@ -504,7 +532,7 @@ int main()
 		modelShader.SetVec3("cameraPos", camera.Position);
 		modelShader.SetFloat("time", glfwGetTime());
 		modelShader.SetMat4("model", mod);
-		modelShader.SetBool("bReflect", true);
+		modelShader.SetBool("bReflect", false);
 		modelShader.SetBool("binvertUVs", true);
 		model.Draw(modelShader);
 		modelShader.SetBool("bReflect", false);
@@ -578,7 +606,7 @@ int main()
 
 void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
-	GLuint cubeTexture, GLuint floorTexture, GLuint cubemapTexture)
+	GLuint cubeDiffTexture, GLuint cubeSpecTexture, GLuint floorTexture, GLuint cubemapTexture)
 {
 	
 
@@ -643,7 +671,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	glStencilFunc(GL_ALWAYS, 1, 0xFF);//replace stencil val by 2
 	glStencilMask(0xFF);
 	// cubes
-	DrawCubes(shader, cubeVAO, cubeTexture);
+	DrawCubes(shader, cubeVAO, cubeDiffTexture, cubeSpecTexture);
 
 	// 2nd. render pass: now draw slightly scaled versions of the objects, this time disabling stencil writing.
 	// Because the stencil buffer is now filled with several 1s. The parts of the buffer that are 1 are not drawn,
@@ -657,7 +685,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	float scale = 1.03f;
 	glm::vec4 borderColor(1.0, 1.0, 0.0, 1.0);
 	// cubes for borders
-	DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true, borderColor);
+	DrawCubes(shader, cubeVAO, cubeDiffTexture, cubeSpecTexture, glm::vec3(scale), true, borderColor);
 
 	
 	//Test drawing borders over borders drawn already
@@ -751,6 +779,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_N && action == GLFW_PRESS)
 	{
 		settings.bShowNormals = !settings.bShowNormals;
+		if (settings.bShowNormals)
+			settings.bExplode = false;
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_M && action == GLFW_PRESS)
+	{
+		settings.bExplode = !settings.bExplode;
+		if (settings.bExplode)
+			settings.bShowNormals = false;
 		settings.UpdateSettings();
 	}
 	if (key == GLFW_KEY_P && action == GLFW_PRESS)
@@ -897,7 +934,8 @@ unsigned int loadTexture(char const * path, bool bSRGB)
     return textureID;
 }
 
-void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, bool bStencil, glm::vec4 borderColor)
+void DrawCubes(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTexture,
+	glm::vec3 scale, bool bStencil, glm::vec4 borderColor)
 {
 	shader.UseProgram();
 
@@ -907,8 +945,12 @@ void DrawCubes(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 scale, boo
 	glBindVertexArray(VAO);
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	shader.SetInt("texture1", 0);
+	glBindTexture(GL_TEXTURE_2D, diffTexture);
+	shader.SetInt("material.diffuse[0]", 0);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, specTexture);
+	shader.SetInt("material.specular[0]", 1);
 
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
@@ -934,7 +976,7 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint texture)
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	shader.SetInt("texture1", 0);
+	shader.SetInt("material.diffuse[0]", 0);
 
 	shader.SetMat4("model", glm::mat4(1.0f));
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -1116,21 +1158,29 @@ void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, const glm::mat4& vi
 	
 }
 
-void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 cameraPos)
+void DrawReflectCube(Shader & shader, GLuint VAO,
+	GLuint cubeMapTexture, GLuint cubeDiffTexture, GLuint cubeSpecTexture, glm::vec3 cameraPos)
 {
 	shader.UseProgram();
 
-	shader.SetBool("bReflect", true);
-	/*shader.SetBool("bReflectF", true);*/
+	shader.SetBool("bReflect", true);	
 
 	shader.SetVec3("cameraPos", cameraPos);
 
 	glBindVertexArray(VAO);
 
-	//glEnable(GL_TEXTURE_CUBE_MAP);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, cubeDiffTexture);
+	shader.SetInt("material.diffuse[0]", 0);
+
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
-	shader.SetInt("skybox", 1);
+	glBindTexture(GL_TEXTURE_2D, cubeSpecTexture);
+	shader.SetInt("material.specular[0]", 1);
+
+	//glEnable(GL_TEXTURE_CUBE_MAP);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapTexture);
+	shader.SetInt("skybox", 2);
 	
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(2.0f, 2.0f, 0.0f));	
@@ -1144,25 +1194,20 @@ void DrawReflectCube(Shader & shader, GLuint VAO, GLuint texture, glm::vec3 came
 	glEnable(GL_TEXTURE_2D);
 }
 
-void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, GLuint testTex, glm::vec3 cameraPos)
+void DrawRefractCube(Shader & shader, GLuint VAO, GLuint cubeMapTexture, glm::vec3 cameraPos)
 {
 	shader.UseProgram();
 
 	shader.SetBool("bRefract", true);
-	/*shader.SetBool("bReflectF", true);*/
-
+	
 	shader.SetVec3("cameraPos", cameraPos);
 
-	glBindVertexArray(VAO);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, testTex);
-	shader.SetInt("texture1", 0);
+	glBindVertexArray(VAO);	
 
 	//glEnable(GL_TEXTURE_CUBE_MAP);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
-	shader.SetInt("skybox", 1);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapTexture);
+	shader.SetInt("skybox", 2);
 
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(0.0f, 2.0f, 0.0f));
@@ -1172,7 +1217,6 @@ void DrawRefractCube(Shader & shader, GLuint VAO, GLuint texture, GLuint testTex
 	glBindVertexArray(0);
 
 	shader.SetBool("bRefract", false);
-	/*shader.SetBool("bReflectF", false);*/
 	glEnable(GL_TEXTURE_2D);
 }
 
@@ -1181,48 +1225,48 @@ void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO)
 	// set up vertex data (and buffer(s)) and configure vertex attributes
 	// ------------------------------------------------------------------
 	float cubeVertices[] = {
-		// positions          // texture Coords
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,//back
-		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+		// positions			// texture Coords	 //normals
+		-0.5f, -0.5f, -0.5f,	0.0f, 0.0f,			 0.0f,  0.0f, -1.0f,//back
+		 0.5f, -0.5f, -0.5f,	1.0f, 0.0f,			 0.0f,  0.0f, -1.0f,
+		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 0.0f,  0.0f, -1.0f,
+		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 0.0f,  0.0f, -1.0f,
+		-0.5f,  0.5f, -0.5f,	0.0f, 1.0f,			 0.0f,  0.0f, -1.0f,
+		-0.5f, -0.5f, -0.5f,	0.0f, 0.0f,			 0.0f,  0.0f, -1.0f,
 
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,//front         
-		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 0.0f,  0.0f,  1.0f,//front         
+		 0.5f,  0.5f,  0.5f,	1.0f, 1.0f,			 0.0f,  0.0f,  1.0f,
+		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,			 0.0f,  0.0f,  1.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 1.0f,			 0.0f,  0.0f,  1.0f,
+		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 0.0f,  0.0f,  1.0f,
+		-0.5f,  0.5f,  0.5f,	0.0f, 1.0f,			 0.0f,  0.0f,  1.0f,
 
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,//left        
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			-1.0f,  0.0f,  0.0f,//left        
+		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			-1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			-1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			-1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			-1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			-1.0f,  0.0f,  0.0f,
 
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,//right
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 1.0f,  0.0f,  0.0f,//right
+		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 1.0f,  0.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 1.0f,  0.0f,  0.0f,
 
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,//bot         
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 0.0f, -1.0f,  0.0f,//bot         
+		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,			 0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,	1.0f, 1.0f,			 0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,			 0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f,	0.0f, 1.0f,			 0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,			 0.0f, -1.0f,  0.0f,
 
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,//top
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+		-0.5f,  0.5f, -0.5f,	0.0f, 1.0f,			 0.0f,  1.0f,  0.0f,//top
+		 0.5f,  0.5f, -0.5f,	1.0f, 1.0f,			 0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,	1.0f, 0.0f,			 0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f,	0.0f, 0.0f,			 0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f,	0.0f, 1.0f,			 0.0f,  1.0f,  0.0f
 	};
 	glGenBuffers(1, &cubeVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
@@ -1230,27 +1274,29 @@ void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO)
 
 	glGenVertexArrays(1, &cubeVAO);
 	
-	glBindVertexArray(cubeVAO);
-	
+	glBindVertexArray(cubeVAO);	
 	
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);//pos
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));//uv
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));//norm
+
 	glBindVertexArray(0);
 }
 
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
 {
 	float planeVertices[] = {
-		// positions          // texture Coords 
-		 5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
-		-5.0f, -0.5f,  5.0f,  0.0f, 0.0f,
-		-5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+		// positions          // texture Coords		//norm
+		 5.0f, -0.5f,  5.0f,  2.0f, 0.0f,			0.0f,  1.0f,  0.0f,
+		-5.0f, -0.5f,  5.0f,  0.0f, 0.0f,			0.0f,  1.0f,  0.0f,
+		-5.0f, -0.5f, -5.0f,  0.0f, 2.0f,			0.0f,  1.0f,  0.0f,
 
-		 5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
-		-5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
-		 5.0f, -0.5f, -5.0f,  2.0f, 2.0f
+		 5.0f, -0.5f,  5.0f,  2.0f, 0.0f,			0.0f,  1.0f,  0.0f,
+		-5.0f, -0.5f, -5.0f,  0.0f, 2.0f,			0.0f,  1.0f,  0.0f,
+		 5.0f, -0.5f, -5.0f,  2.0f, 2.0f,			0.0f,  1.0f,  0.0f
 	};
 
 	glGenVertexArrays(1, &planeVAO);
@@ -1258,10 +1304,14 @@ void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
 	glBindVertexArray(planeVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), &planeVertices, GL_STATIC_DRAW);
+	
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);//pos
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));//uv
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));//norm
+
 	glBindVertexArray(0);
 }
 
@@ -1404,11 +1454,11 @@ void GenReflectVAO(GLuint& reflectVAO, GLuint& reflectVBO)
 	glEnableVertexAttribArray(0);	
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	//UV
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	//normal
 	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	//normal
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
 	glBindVertexArray(0);
 }
 

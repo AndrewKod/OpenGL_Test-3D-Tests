@@ -54,7 +54,7 @@ void main()
 		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));		
 	}
 
-	vs_out.fs_fragPos = vec3(view * model * vec4(position, 1.0f));
+	vs_out.fs_fragPos = vec3(model * vec4(position, 1.0f));
 
 	if(bInstanced)
 		gl_Position = projection * view * instanceModelMatrix * vec4(position, 1.0);

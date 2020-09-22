@@ -76,6 +76,8 @@ in vec2 TexCoords;
 in vec3 Normal;
 in vec3 Position;
 
+uniform bool bStencil = false;
+uniform vec4 borderColor;
 
 uniform samplerCube skybox;
 uniform vec3 cameraPos;
@@ -83,6 +85,7 @@ uniform vec3 cameraPos;
 uniform bool bShowNormals = false;
 
 uniform bool bReflect = false;
+uniform bool bRefract = false;
 
 uniform bool binvertUVs = false;
 
@@ -93,31 +96,58 @@ layout (std140) uniform Settings
 
 void main()
 {   
+	vec2 texCoords = vec2(TexCoords.x, binvertUVs ? 1.0 - TexCoords.y : TexCoords.y);
+	vec3 diffuseColor = vec3(texture(material.diffuse[0], texCoords));
+	
+
 	vec4 col = vec4(0.0);
-	if(bShowNormals)
+	if(bStencil)
+	{
+		col = borderColor;
+	}	
+	else if(bShowNormals)
 	{
 		col = vec4(1.0, 1.0, 0.0, 1.0);
 	}
 	else if(bReflect)
-	{
-		vec3 resultColor = vec3(0.f);
-
-		vec2 invertedTexCoords = vec2(TexCoords.x, binvertUVs ? 1.0 - TexCoords.y : TexCoords.y);
-
-		vec3 diffuseColor = vec3(texture(material.diffuse[0], invertedTexCoords));
-		float reflectionCoef = texture(material.specular[0], invertedTexCoords).r;
-
+	{		
+		float reflectionCoef = texture(material.specular[0], texCoords).r;
 		vec3 I = normalize(Position - cameraPos);
 		vec3 R = reflect(I, normalize(Normal));
 		col = vec4(texture(skybox, R).rgb * reflectionCoef + diffuseColor, 1.0);
 	}
+	else if(bRefract)
+	{
+		float ratio = 1.00 / 1.52;
+		vec3 I = normalize(Position - cameraPos);
+		vec3 R = refract(I, normalize(Normal), ratio);
+		col = vec4(texture(skybox, R).rgb, 1.0);
+	}
 	else
 	{
-		vec2 invertedTexCoords = vec2(TexCoords.x, binvertUVs ? 1.0 - TexCoords.y : TexCoords.y);
-
-		vec3 diffuseColor = vec3(texture(material.diffuse[0], invertedTexCoords));
 		
+		vec3 specularColor = vec3(texture(material.specular[0], texCoords));
+
+		vec3 norm = normalize(Normal);	
+		vec3 viewDir = normalize(cameraPos - FragPos);
+
 		col = vec4(diffuseColor, 1.0);
+
+//		//Directional light
+//		vec3 dirLigtColor = CalcDirLight(norm, viewDir, diffuseColor, specularColor);
+//		col += vec4(dirLigtColor, 1.0);
+//
+//		//Point Light
+//		for(int lightId = 0; lightId < NUM_POINT_LIGHTS; lightId++)
+//		{
+//			vec3 pointLightColor = CalcPointLight(lightId, norm, viewDir, diffuseColor, specularColor);
+//			col += vec4(pointLightColor, 1.0);
+//		}	
+//
+//		//Spot Light
+//		vec3 spotLightColor = CalcSpotLight(norm, viewDir, diffuseColor, specularColor);
+//		col += vec4(spotLightColor, 1.0);		
+		
 	}
 
 	if(bGammaCorrection)
@@ -137,7 +167,7 @@ float LinearizeDepth(float depth)
 
 vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor)
 {	
-	vec3 directedLightDir = normalize(vec3(transView * vec4(-directionalLight.direction, 0.0)));
+	vec3 directedLightDir = normalize(-directionalLight.direction);
 	
     // диффузное освещение
     float diff = max(dot(normal, directedLightDir), 0.0);
@@ -168,7 +198,7 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 {
 	if(!pointLights[lightId].bEnabled)
 		return vec3(0.f);
-
+	
 	/*Point Light Fading*/
 	float dist = length(pointLights[lightId].position - FragPos);
 	float attenuation = 1.0 / (pointLights[lightId].constant + pointLights[lightId].linear * dist + 
@@ -203,11 +233,11 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 } 
 
 vec3 CalcSpotLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor)
-{	
-	vec3 spotLightDir = normalize(-FragPos);/*projectedLightDir == viewDir*/
+{		
+	vec3 spotLightDir = normalize(cameraPos - FragPos);/*projectedLightDir == viewDir*/
 	
 	/*projected light coeffs*/
-	float theta = dot(spotLightDir, normalize(vec3(transView * vec4(-spotLight.direction, 0.0f))));
+	float theta = dot(spotLightDir, normalize(-spotLight.direction));
 	float epsilon   = spotLight.cutOff - spotLight.outerCutOff;
 	float intensity = clamp((theta - spotLight.outerCutOff) / epsilon, 0.0, 1.0);
 
