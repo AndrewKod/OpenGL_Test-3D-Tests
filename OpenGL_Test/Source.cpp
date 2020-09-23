@@ -231,6 +231,10 @@ void AddDirectedLight(std::vector<Shader>& shaders);
 void AddPointLights(std::vector<Shader>& shaders, std::vector<PointLight>& pointLights);
 void AddSpotLight(std::vector<Shader>& shaders);
 
+void UpdateSpotLight(std::vector<Shader>& shaders);
+void UpdatePointLights(std::vector<Shader>& shaders, std::vector<PointLight>& pointLights,
+	Shader& lampShader, GLuint lampVAO);
+
 void GenPointLights(std::vector<PointLight>& pointLights);
 
 int main()
@@ -469,7 +473,12 @@ int main()
 
 	std::vector<PointLight> pointLights;
 	GenPointLights(pointLights);
+	
+	AddDirectedLight(shaders);
 
+	AddPointLights(shaders, pointLights);
+
+	AddSpotLight(shaders);
 
 	///////////////////////////////////INSTANCING//////////////////////////////////
 
@@ -582,14 +591,11 @@ int main()
 
 
 		//////////////////////////////////////LIGHTS//////////////////////////////////
-		if(settings.bDirectionalLight)
-			AddDirectedLight(shaders);
-
 		if (settings.bPointLights)
-			AddPointLights(shaders, pointLights);
+			UpdatePointLights(shaders, pointLights, shader, cubeVAO);
 
 		if (settings.bSpotLight)
-			AddSpotLight(shaders);
+			UpdateSpotLight(shaders);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -1639,10 +1645,7 @@ void AddSpotLight(std::vector<Shader>& shaders)
 	for (GLint i = 0; i < shaders.size(); i++)
 	{
 		shaders[i].UseProgram();
-		/////////spot light
-		shaders[i].SetVec3("spotLight.position", camera.Position);
-		shaders[i].SetVec3("spotLight.direction", camera.Front);
-
+		/////////spot light		
 		
 		shaders[i].SetFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
 		shaders[i].SetFloat("spotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
@@ -1650,6 +1653,68 @@ void AddSpotLight(std::vector<Shader>& shaders)
 		shaders[i].SetVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
 		shaders[i].SetVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f); // darken the light a bit to fit the scene
 		shaders[i].SetVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+	}
+}
+
+void UpdateSpotLight(std::vector<Shader>& shaders)
+{
+	for (GLint i = 0; i < shaders.size(); i++)
+	{
+		shaders[i].UseProgram();
+		/////////spot light
+		shaders[i].SetVec3("spotLight.position", camera.Position);
+		shaders[i].SetVec3("spotLight.direction", camera.Front);
+	}
+}
+
+void UpdatePointLights(std::vector<Shader>& shaders, std::vector<PointLight>& pointLights,
+	Shader& lampShader, GLuint lampVAO)
+{
+	for (GLint i = 0; i < shaders.size(); i++)
+	{
+		Shader shader = shaders[i];
+		for (int lightId = 0; lightId < pointLights.size(); lightId++)
+		{
+			GLfloat axisCoef = 1.f / (pointLights.size())* lightId;
+
+			glm::mat4 model;
+			//model = glm::rotate(model, ((sin((GLfloat)glfwGetTime()) / 2) + 0.5f)/* * glm::radians(20.0f )*/,
+				//glm::vec3(0.0f, 1.0f, 0.0f));
+			model = glm::rotate(model, ((GLfloat)glfwGetTime() * glm::radians(10.0f*(lightId + 1))),
+				glm::vec3(axisCoef, 1.0f - axisCoef, axisCoef));
+
+			glm::vec3 lampPosition = pointLights[lightId].position;
+
+			model = glm::translate(model, lampPosition);
+			model = glm::scale(model, glm::vec3(0.2f));
+
+			glm::vec4 transLightPos = model * glm::vec4(lampPosition, 1.f);
+
+
+			lampShader.UseProgram();
+
+			lampShader.SetMat4("model", model);
+			lampShader.SetBool("bStencil", true);
+			glm::vec4 lampColor = glm::vec4(pointLights[lightId].diffuse, 1.0f);
+			lampShader.SetVec4("borderColor", lampColor);
+			
+			glBindVertexArray(lampVAO);
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+			glBindVertexArray(0);
+
+			lampShader.SetBool("bStencil", false);
+
+			char num[10];
+			_itoa_s(lightId, num, 10);
+
+			std::string str0 = "pointLights[";
+			std::string str1 = "].position";
+			std::string res = str0 + num + str1;
+
+			shader.UseProgram();
+
+			shader.SetVec3(res.c_str(), transLightPos);
+		}
 	}
 }
 
