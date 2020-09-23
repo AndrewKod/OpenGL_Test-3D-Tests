@@ -157,6 +157,37 @@ struct Settings
 }
 settings;
 
+struct PointLight 
+{
+	glm::vec3 position;
+
+	glm::vec3 ambient;
+	glm::vec3 diffuse;
+	glm::vec3 specular;
+
+	//light fading
+	float constant;
+	float linear;
+	float quadratic;	
+
+	PointLight(){}
+
+	PointLight(glm::vec3 position,glm::vec3 ambient,glm::vec3 diffuse,glm::vec3 specular,
+		float constant =  1.0f,float linear = 0.007f,float quadratic = 0.0002f)
+	{
+		this->position = position;
+
+		this->ambient = ambient;
+		this->diffuse = diffuse;
+		this->specular = specular;
+
+		//light fading
+		this->constant = constant;
+		this->linear = linear;
+		this->quadratic = quadratic;
+	}
+};
+
 
 void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO);
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO);
@@ -196,9 +227,11 @@ void DrawRefractCube(Shader & shader, GLuint VAO, GLuint cubeMapTexture, glm::ve
 void FillModelMatrices(GLuint amount, glm::mat4 *modelMatrices);
 void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices, GLuint& modelMatricesVBO);
 
-void AddDirectedLight(Shader shaders[], GLint arrSize);
-void AddPointLights(Shader shaders[], GLint arrSize);
-void AddSpotLight(Shader shaders[], GLint arrSize);
+void AddDirectedLight(std::vector<Shader>& shaders);
+void AddPointLights(std::vector<Shader>& shaders, std::vector<PointLight>& pointLights);
+void AddSpotLight(std::vector<Shader>& shaders);
+
+void GenPointLights(std::vector<PointLight>& pointLights);
 
 int main()
 {
@@ -432,7 +465,10 @@ int main()
 
 	///////////////////////////////////////LIGHTS////////////////////////////////////
 
-	Shader shaders[]{ shader, modelShader };	
+	std::vector<Shader> shaders{ shader, modelShader };
+
+	std::vector<PointLight> pointLights;
+	GenPointLights(pointLights);
 
 
 	///////////////////////////////////INSTANCING//////////////////////////////////
@@ -547,13 +583,13 @@ int main()
 
 		//////////////////////////////////////LIGHTS//////////////////////////////////
 		if(settings.bDirectionalLight)
-			AddDirectedLight(shaders, 2);
+			AddDirectedLight(shaders);
 
 		if (settings.bPointLights)
-			AddPointLights(shaders, 2);
+			AddPointLights(shaders, pointLights);
 
 		if (settings.bSpotLight)
-			AddSpotLight(shaders, 2);
+			AddSpotLight(shaders);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -1542,9 +1578,9 @@ void SetupFrameBufferMS(GLuint& framebuffer, GLuint& colorBufferMS, GLuint& rend
 
 }
 
-void AddDirectedLight(Shader shaders[], GLint arrSize)
+void AddDirectedLight(std::vector<Shader>& shaders)
 {
-	for (GLint i = 0; i < arrSize; i++)
+	for (GLint i = 0; i < shaders.size(); i++)
 	{
 		shaders[i].UseProgram();
 		/////////directed light
@@ -1554,16 +1590,53 @@ void AddDirectedLight(Shader shaders[], GLint arrSize)
 		shaders[i].SetVec3("directionalLight.specular", 0.5f, 0.5f, 0.5f);
 	}
 }
-void AddPointLights(Shader shaders[], GLint arrSize)
+void AddPointLights(std::vector<Shader>& shaders, std::vector<PointLight>& pointLights)
 {
-	for (GLint i = 0; i < arrSize; i++)
+	for (GLint i = 0; i < shaders.size(); i++)
 	{
-		
+		Shader shader = shaders[i];
+		for (int lightId = 0; lightId < pointLights.size(); lightId++)
+		{
+			char num[10];
+			_itoa_s(lightId, num, 10);
+
+			std::string str0 = "pointLights[";
+			std::string str1 = "].ambient";
+			std::string res = str0 + num + str1;
+
+			glm::vec3 ambient = pointLights[lightId].ambient;
+			glm::vec3 diffuse = pointLights[lightId].diffuse;
+			glm::vec3 specular = pointLights[lightId].specular;
+
+			shader.SetVec3(res.c_str(), ambient);
+			str1 = "].diffuse";
+			res = str0 + num + str1;
+			shader.SetVec3(res.c_str(), diffuse); // darken the light a bit to fit the scene
+			str1 = "].specular";
+			res = str0 + num + str1;
+			shader.SetVec3(res.c_str(), specular);
+
+			str1 = "].constant";
+			res = str0 + num + str1;
+			shader.SetFloat(res.c_str(), pointLights[lightId].constant);
+			str1 = "].linear";
+			res = str0 + num + str1;
+			//shader.SetFloat(res.c_str(), 0.09f);//50
+			shader.SetFloat(res.c_str(), pointLights[lightId].linear);//600
+			str1 = "].quadratic";
+			res = str0 + num + str1;
+			//shader.SetFloat(res.c_str(), 0.032f);
+			shader.SetFloat(res.c_str(), pointLights[lightId].quadratic);
+
+			str1 = "].bEnabled";
+			res = str0 + num + str1;
+			shader.SetInt(res.c_str(), true);//set boolean uniforn through integer
+		}
 	}
 }
-void AddSpotLight(Shader shaders[], GLint arrSize)
+void AddSpotLight(std::vector<Shader>& shaders)
 {
-	for (GLint i = 0; i < arrSize; i++)
+	for (GLint i = 0; i < shaders.size(); i++)
 	{
 		shaders[i].UseProgram();
 		/////////spot light
@@ -1578,4 +1651,33 @@ void AddSpotLight(Shader shaders[], GLint arrSize)
 		shaders[i].SetVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f); // darken the light a bit to fit the scene
 		shaders[i].SetVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
 	}
+}
+
+void GenPointLights(std::vector<PointLight>& pointLights)
+{
+	pointLights.push_back(
+		PointLight(
+			glm::vec3(1.2f, 1.0f, 2.0f),
+			glm::vec3(0.1f, 0.1f, 0.1f),
+			glm::vec3(1.0f, 1.0f, 1.0f),
+			glm::vec3(1.0f, 1.0f, 1.0f)));
+	pointLights.push_back(
+		PointLight(
+			glm::vec3(2.3f, -2.3f, -2.0f),
+			glm::vec3(0.1f, 0.0f, 0.0f),
+			glm::vec3(1.0f, 0.0f, 0.0f),
+			glm::vec3(1.0f, 0.0f, 0.0f)));
+	pointLights.push_back(
+		PointLight(
+			glm::vec3(-2.0f, 2.0f, -2.0f),
+			glm::vec3(0.0f, 0.1f, 0.0f),
+			glm::vec3(0.0f, 1.0f, 0.0f),
+			glm::vec3(0.0f, 1.0f, 0.0f)));
+	pointLights.push_back(
+		PointLight(
+			glm::vec3(0.0f, 0.0f, -2.0f),
+			glm::vec3(0.0f, 0.0f, 0.1f),
+			glm::vec3(0.0f, 0.0f, 1.0f),
+			glm::vec3(0.0f, 0.0f, 1.0f)));
+
 }

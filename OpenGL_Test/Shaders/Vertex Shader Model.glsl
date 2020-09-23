@@ -71,12 +71,9 @@ void main()
 		mat3 normalMatrix = mat3(transpose(inverse(view * model)));
 		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));		
 	}
-
 	
 	vs_out.fs_fragPos = vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0f));	
-
-	if(bInstancing)
-		gl_Position = projection * view * instanceModelMatrix * vec4(position, 1.0);
-	else
-		gl_Position = projection * view * model * vec4(position, 1.0);
+	
+	gl_Position = projection * view * (bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0);
+	
 }
