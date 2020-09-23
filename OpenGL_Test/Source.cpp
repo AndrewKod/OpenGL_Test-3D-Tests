@@ -623,8 +623,8 @@ int main()
 	glDeleteFramebuffers(1, &intermediateFBO);
 	glDeleteFramebuffers(1, &framebufferAA);
 
-	//glDeleteBuffers(1, &modelMatricesVBO);
-	//delete[] modelMatrices;
+	glDeleteBuffers(1, &modelMatricesVBO);
+	delete[] modelMatrices;
 
     glfwTerminate();
     return 0;
@@ -853,7 +853,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_O && action == GLFW_PRESS)
 	{
 		//do not using shadows without lights
-		if (!(settings.bPointLights || settings.bDirectionalLight))
+		if (settings.bPointLights || settings.bDirectionalLight)
 		{
 			settings.bShadows = !settings.bShadows;
 			settings.UpdateSettings();
@@ -1601,6 +1601,7 @@ void AddPointLights(std::vector<Shader>& shaders, std::vector<PointLight>& point
 	for (GLint i = 0; i < shaders.size(); i++)
 	{
 		Shader shader = shaders[i];
+		shader.UseProgram();
 		for (int lightId = 0; lightId < pointLights.size(); lightId++)
 		{
 			char num[10];
@@ -1673,6 +1674,7 @@ void UpdatePointLights(std::vector<Shader>& shaders, std::vector<PointLight>& po
 	for (GLint i = 0; i < shaders.size(); i++)
 	{
 		Shader shader = shaders[i];
+		shader.UseProgram();
 		for (int lightId = 0; lightId < pointLights.size(); lightId++)
 		{
 			GLfloat axisCoef = 1.f / (pointLights.size())* lightId;
@@ -1690,19 +1692,22 @@ void UpdatePointLights(std::vector<Shader>& shaders, std::vector<PointLight>& po
 
 			glm::vec4 transLightPos = model * glm::vec4(lampPosition, 1.f);
 
+			//draw lamps only at first iteration
+			if (i == 0)
+			{
+				lampShader.UseProgram();
 
-			lampShader.UseProgram();
+				lampShader.SetMat4("model", model);
+				lampShader.SetBool("bStencil", true);
+				glm::vec4 lampColor = glm::vec4(pointLights[lightId].diffuse, 1.0f);
+				lampShader.SetVec4("borderColor", lampColor);
 
-			lampShader.SetMat4("model", model);
-			lampShader.SetBool("bStencil", true);
-			glm::vec4 lampColor = glm::vec4(pointLights[lightId].diffuse, 1.0f);
-			lampShader.SetVec4("borderColor", lampColor);
-			
-			glBindVertexArray(lampVAO);
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-			glBindVertexArray(0);
+				glBindVertexArray(lampVAO);
+				glDrawArrays(GL_TRIANGLES, 0, 36);
+				glBindVertexArray(0);
 
-			lampShader.SetBool("bStencil", false);
+				lampShader.SetBool("bStencil", false);
+			}
 
 			char num[10];
 			_itoa_s(lightId, num, 10);

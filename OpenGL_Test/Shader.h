@@ -14,7 +14,9 @@
 class Shader
 {
 public:
+
 	unsigned int ID;
+
 	// constructor generates the shader on the fly
 	// ------------------------------------------------------------------------
 	Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr)
@@ -168,6 +170,7 @@ public:
 		glUniformBlockBinding(ID, glGetUniformBlockIndex(ID, bufferName.c_str()), bindingPoint);
 	}
 
+	
 private:
 	// utility function for checking shader compilation/linking errors.
 	// ------------------------------------------------------------------------
