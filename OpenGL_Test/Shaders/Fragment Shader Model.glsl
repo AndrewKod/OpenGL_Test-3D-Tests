@@ -89,11 +89,12 @@ uniform bool bRefract = false;
 
 uniform bool binvertUVs = false;
 
+uniform bool bShowNormals;
+
 layout (std140) uniform Settings
 {
 	bool bGammaCorrection;       
-	bool bInstancing;
-	bool bShowNormals;
+	
 	bool bExplode;
 	bool bPostProcess;
 

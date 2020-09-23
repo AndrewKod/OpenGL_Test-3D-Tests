@@ -108,7 +108,7 @@ GLint sectorsToCells[sectorsSize] = {
 
 bool bLoadSRGB = false;
 
-GLuint uboSettings = 0;
+GLuint settingsUBO = 0;
 	
 /////////////////////////////SETTINGS////////////////////////////////
 //Gamma-correction				G
@@ -123,8 +123,7 @@ GLuint uboSettings = 0;
 struct Settings
 {
 	GLint bGammaCorrection =	false;//G
-	GLint bInstancing =			false;//I
-	GLint bShowNormals =		false;//N
+	
 	GLint bExplode =			false;//M
 	GLint bPostProcess =		false;//P	
 
@@ -137,12 +136,15 @@ struct Settings
 
 	GLint bShadows =			false;//O
 
+	GLint bInstancing =			false;//I excluded from settingsUBO
+	GLint bShowNormals =		false;//N excluded from settingsUBO
+
 	void UpdateSettings()
 	{
-		glBindBuffer(GL_UNIFORM_BUFFER, uboSettings);
+		glBindBuffer(GL_UNIFORM_BUFFER, settingsUBO);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bGammaCorrection),	sizeof(GLint), &bGammaCorrection);
-		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bInstancing),			sizeof(GLint), &bInstancing);
-		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShowNormals),		sizeof(GLint), &bShowNormals);
+		//glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bInstancing),		sizeof(GLint), &bInstancing);
+		//glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShowNormals),		sizeof(GLint), &bShowNormals);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bPostProcess),		sizeof(GLint), &bPostProcess);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bAntiAliasing),		sizeof(GLint), &bAntiAliasing);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bBlit),				sizeof(GLint), &bBlit);
@@ -293,14 +295,14 @@ int main()
 	modelShaderNormals.BindUniformBuffer("Matrices", 0);
 
 	/////////////////////////////////////SETTINGS UNIFORM BUFFER////////////////////////////////////	
-	glGenBuffers(1, &uboSettings);
-	glBindBuffer(GL_UNIFORM_BUFFER, uboSettings);
+	glGenBuffers(1, &settingsUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, settingsUBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(Settings), NULL, GL_STATIC_DRAW); 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glBindBufferBase(
 		GL_UNIFORM_BUFFER,
 		1,					//binding point
-		uboSettings);		//uniform buffer ID
+		settingsUBO);		//uniform buffer ID
 	
 	shader.BindUniformBuffer(
 		"Settings",		//uniform block name
@@ -430,9 +432,7 @@ int main()
 
 	///////////////////////////////////////LIGHTS////////////////////////////////////
 
-	Shader shaders[]{ shader, modelShader };
-
-	AddDirectedLight(shaders, 2);
+	Shader shaders[]{ shader, modelShader };	
 
 
 	///////////////////////////////////INSTANCING//////////////////////////////////
@@ -496,28 +496,13 @@ int main()
 		}
 			
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		
-
-        //glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
-        // clear all relevant buffers
-        //glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
-        //glClear(GL_COLOR_BUFFER_BIT);
+       
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
 		DrawReflectCube(shader, cubeVAO, cubemapTexture, cubeTexture, cubeSpecTexture, camera.Position);
 
-		DrawRefractCube(shader, cubeVAO, cubemapTexture, camera.Position);
-
+		DrawRefractCube(shader, cubeVAO, cubemapTexture, camera.Position);		
 		
-		/*glm::mat4 mod = glm::mat4(1.0f);		
-		mod = glm::translate(mod, glm::vec3(2.0f, 2.0f, -3.0f));
-		mod = glm::rotate(mod, glm::radians((GLfloat)glfwGetTime()*10), glm::vec3(1.0, 1.0, 1.0));
-		
-		modelShader.UseProgram();
-		modelShader.SetMat4("model", mod);
-
-		modelShaderNormals.UseProgram();
-		modelShaderNormals.SetMat4("model", mod);*/
 
 		//Draw model
 		modelShader.UseProgram();		
@@ -546,11 +531,9 @@ int main()
 		if (settings.bInstancing)
 		{
 			skullShader.UseProgram();
-			skullShader.SetBool("binvertUVs", false);
-			skullShader.SetBool("bInstanced", true);
+			skullShader.SetBool("bInstancing", true);
 			skull.Draw(skullShader, true, amount);
-			skullShader.SetBool("binvertUVs", true);
-			skullShader.SetBool("bInstanced", false);
+			skullShader.SetBool("bInstancing", false);
 		}
 
 		//////////////////////////////////POST PROCESS EFFECT//////////////////////////
@@ -1575,14 +1558,7 @@ void AddPointLights(Shader shaders[], GLint arrSize)
 {
 	for (GLint i = 0; i < arrSize; i++)
 	{
-		shaders[i].UseProgram();
-		/////////point lights
-		shaders[i].SetFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
-		shaders[i].SetFloat("spotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
-
-		shaders[i].SetVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
-		shaders[i].SetVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f); // darken the light a bit to fit the scene
-		shaders[i].SetVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+		
 	}
 }
 void AddSpotLight(Shader shaders[], GLint arrSize)

@@ -19,11 +19,13 @@ uniform mat4 model;
 //uniform mat4 view;
 //uniform mat4 projection;
 
+uniform bool bInstancing;
+uniform bool bShowNormals;
+
 layout (std140) uniform Settings
 {
 	bool bGammaCorrection;       
-	bool bInstancing;
-	bool bShowNormals;
+	
 	bool bExplode;
 	bool bPostProcess;
 

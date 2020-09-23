@@ -3,16 +3,16 @@ e:\андро\программирование\мои проекты\opengl_test
 e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(44): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
 e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(45): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
 e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(462): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(525): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(866): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(867): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(871): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(872): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(874): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(875): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(884): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1056): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1452): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1471): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1475): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(510): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(849): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(850): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(854): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(855): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(857): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(858): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(867): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1039): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1435): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1454): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1458): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
   OpenGL_Test.vcxproj -> E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\OpenGL_Test.exe
