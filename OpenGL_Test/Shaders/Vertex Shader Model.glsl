@@ -60,8 +60,10 @@ void main()
 {
 	if(!bShowNormals)
 	{
-		vs_out.fs_normal = mat3(transpose(inverse(model))) * normal;
-		vs_out.fs_position = vec3(model * vec4(position, 1.0));	
+		
+		vs_out.fs_normal = mat3(transpose(inverse(bInstancing ? instanceModelMatrix : model))) * normal;
+		vs_out.fs_position = vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0));		
+		
 		vs_out.fs_texCoords = texCoords;	
 	}
 	else
@@ -70,7 +72,8 @@ void main()
 		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));		
 	}
 
-	vs_out.fs_fragPos = vec3(model * vec4(position, 1.0f));
+	
+	vs_out.fs_fragPos = vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0f));	
 
 	if(bInstancing)
 		gl_Position = projection * view * instanceModelMatrix * vec4(position, 1.0);
