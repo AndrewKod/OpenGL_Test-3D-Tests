@@ -169,14 +169,14 @@ struct DirectionalLight {
 
 struct SpotLight {
 	glm::vec4  position;
-	glm::vec4  direction;
-
-	float cutOff;
-	float outerCutOff;
+	glm::vec4  direction;	
 
 	glm::vec4 ambient;
 	glm::vec4 diffuse;
 	glm::vec4 specular;
+	
+	float cutOff;
+	float outerCutOff;
 };
 
 struct PointLight 
@@ -1755,7 +1755,7 @@ void UpdatePointLights(std::vector<PointLight>& pointLights,
 
 		lampShader.SetMat4("model", model);
 		lampShader.SetBool("bStencil", true);
-		glm::vec4 lampColor = pointLights[lightId].diffuse;
+		glm::vec4 lampColor = glm::vec4(pointLights[lightId].diffuse/*, 1.0*/);
 		lampShader.SetVec4("borderColor", lampColor);
 
 		glBindVertexArray(lampVAO);
