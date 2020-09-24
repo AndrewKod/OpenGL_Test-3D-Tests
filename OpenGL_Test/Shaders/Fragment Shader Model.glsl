@@ -14,7 +14,7 @@ struct Material {
 uniform Material material;
 
 ////////////////////////////LIGHTS////////////////////////////
-struct DirectionalLight {
+layout (std140) struct DirectionalLight {
     vec3 direction;
 
     vec3 ambient;
@@ -22,7 +22,7 @@ struct DirectionalLight {
     vec3 specular;
 };
 
-struct PointLight {
+layout (std140) struct PointLight {
     vec3 position;  
   
     vec3 ambient;
@@ -37,21 +37,22 @@ struct PointLight {
 	bool bEnabled;
 };
 
-struct SpotLight {
+layout (std140) struct SpotLight {
     vec3  position;
     vec3  direction;
-    float cutOff;
+
+	float cutOff;
 	float outerCutOff;
 
-    vec3 ambient;
+	vec3 ambient;
     vec3 diffuse;
-    vec3 specular;
+    vec3 specular;   
 };
 
-#define NUM_POINT_LIGHTS 16
-uniform DirectionalLight directionalLight;
-uniform PointLight pointLights[NUM_POINT_LIGHTS];
-uniform SpotLight spotLight;
+
+//uniform DirectionalLight directionalLight;
+//uniform PointLight pointLights[NUM_POINT_LIGHTS];
+//uniform SpotLight spotLight;
 
 float zNear = 0.1; 
 float zFar  = 100.0; 
@@ -106,6 +107,15 @@ layout (std140) uniform Settings
 	bool bSpotLight;
 
 	bool bShadows;
+};
+
+#define NUM_POINT_LIGHTS 16
+
+layout (std140) uniform Lights
+{
+	DirectionalLight directionalLight;
+	SpotLight spotLight;
+	PointLight pointLights[NUM_POINT_LIGHTS];
 };
 
 void main()
@@ -192,7 +202,7 @@ float LinearizeDepth(float depth)
 
 vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor)
 {	
-	vec3 directedLightDir = normalize(-directionalLight.direction);
+	vec3 directedLightDir = normalize(vec3(-directionalLight.direction));
 	
     // диффузное освещение
     float diff = max(dot(normal, directedLightDir), 0.0);
@@ -212,9 +222,9 @@ vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCol
 	}
 
     // комбинируем результаты
-    vec3 ambient  = directionalLight.ambient  * diffuseColor;
-    vec3 diffuse  = directionalLight.diffuse  * diff * diffuseColor;
-    vec3 specular = directionalLight.specular * spec * specularColor;
+    vec3 ambient  = vec3(directionalLight.ambient)  * diffuseColor;
+    vec3 diffuse  = vec3(directionalLight.diffuse)  * diff * diffuseColor;
+    vec3 specular = vec3(directionalLight.specular) * spec * specularColor;
 
     return (ambient + diffuse + specular);
 }
@@ -225,11 +235,11 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 		return vec3(0.f);
 	
 	/*Point Light Fading*/
-	float dist = length(pointLights[lightId].position - FragPos);
+	float dist = length(vec3(pointLights[lightId].position) - FragPos);
 	float attenuation = 1.0 / (pointLights[lightId].constant + pointLights[lightId].linear * dist + 
     		    pointLights[lightId].quadratic * (dist * dist));
 
-	vec3 pointLightDir = normalize(pointLights[lightId].position - FragPos);	
+	vec3 pointLightDir = normalize(vec3(pointLights[lightId].position) - FragPos);	
     // диффузное освещение
     float diff = max(dot(normal, pointLightDir), 0.0);
 
@@ -248,9 +258,9 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 	}
     
     // комбинируем результаты
-    vec3 ambient  = pointLights[lightId].ambient  * diffuseColor;
-    vec3 diffuse  = pointLights[lightId].diffuse  * diff * diffuseColor;
-    vec3 specular = pointLights[lightId].specular * spec * specularColor;
+    vec3 ambient  = vec3(pointLights[lightId].ambient)  * diffuseColor;
+    vec3 diffuse  = vec3(pointLights[lightId].diffuse)  * diff * diffuseColor;
+    vec3 specular = vec3(pointLights[lightId].specular) * spec * specularColor;
     ambient  *= attenuation;
     diffuse  *= attenuation;
     specular *= attenuation;

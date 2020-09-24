@@ -157,23 +157,47 @@ struct Settings
 }
 settings;
 
+//Here we are using vec4 for easier calculations for uniform buffer
+//But in shader we are using vec3 in uniform buffer
+struct DirectionalLight {
+	glm::vec4 direction;
+
+	glm::vec4 ambient;
+	glm::vec4 diffuse;
+	glm::vec4 specular;
+};
+
+struct SpotLight {
+	glm::vec4  position;
+	glm::vec4  direction;
+
+	float cutOff;
+	float outerCutOff;
+
+	glm::vec4 ambient;
+	glm::vec4 diffuse;
+	glm::vec4 specular;
+};
+
 struct PointLight 
 {
-	glm::vec3 position;
+	glm::vec4 position;
 
-	glm::vec3 ambient;
-	glm::vec3 diffuse;
-	glm::vec3 specular;
+	glm::vec4 ambient;
+	glm::vec4 diffuse;
+	glm::vec4 specular;
 
 	//light fading
 	float constant;
 	float linear;
 	float quadratic;	
 
+	GLint bEnabled;
+
 	PointLight(){}
 
-	PointLight(glm::vec3 position,glm::vec3 ambient,glm::vec3 diffuse,glm::vec3 specular,
-		float constant =  1.0f,float linear = 0.007f,float quadratic = 0.0002f)
+	PointLight(glm::vec4 position, glm::vec4 ambient, glm::vec4 diffuse, glm::vec4 specular,
+		float constant = 1.0f, float linear = 0.007f, float quadratic = 0.0002f, GLint bEnabled = true)
 	{
 		this->position = position;
 
@@ -185,8 +209,48 @@ struct PointLight
 		this->constant = constant;
 		this->linear = linear;
 		this->quadratic = quadratic;
+
+		this->bEnabled = bEnabled;
 	}
 };
+
+GLsizeiptr CalcStructSizeUBO(GLsizeiptr structSize);
+
+#define NUM_POINT_LIGHTS 16
+
+GLuint lightsUBO = 0;
+struct Lights
+{
+	DirectionalLight directionalLight;
+	SpotLight spotLight;
+	PointLight pointLights[NUM_POINT_LIGHTS];
+
+	//Calculating lights Size
+	//everu struct is multiple of vec4
+	GLsizeiptr dirLightSize = CalcStructSizeUBO(sizeof(DirectionalLight));
+	GLsizeiptr spotLightSize = CalcStructSizeUBO(sizeof(SpotLight));
+	GLsizeiptr pointLightSize = CalcStructSizeUBO(sizeof(PointLight));
+	GLsizeiptr pointLightsSize = pointLightSize * NUM_POINT_LIGHTS;
+
+	//every array member is multiple of vec4
+	GLsizeiptr lightsSize = dirLightSize + spotLightSize + pointLightsSize;
+
+	void UpdateLights()
+	{
+		GLint dirLightOffset = 0;
+		GLint spotLightOffset = dirLightSize;
+		GLint pointLightOffset = dirLightSize + spotLightSize;
+				
+		glBindBuffer(GL_UNIFORM_BUFFER, lightsUBO);		
+		
+		glBufferSubData(GL_UNIFORM_BUFFER, dirLightOffset,		dirLightSize,		&directionalLight);
+		glBufferSubData(GL_UNIFORM_BUFFER, spotLightOffset,		spotLightSize,		&spotLight);
+		glBufferSubData(GL_UNIFORM_BUFFER, pointLightOffset,	pointLightsSize,	&pointLights[0]);
+
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+}
+lights;
 
 
 void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO);
@@ -227,15 +291,16 @@ void DrawRefractCube(Shader & shader, GLuint VAO, GLuint cubeMapTexture, glm::ve
 void FillModelMatrices(GLuint amount, glm::mat4 *modelMatrices);
 void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices, GLuint& modelMatricesVBO);
 
-void AddDirectedLight(std::vector<Shader>& shaders);
-void AddPointLights(std::vector<Shader>& shaders, std::vector<PointLight>& pointLights);
-void AddSpotLight(std::vector<Shader>& shaders);
+void AddDirectedLight();
+void AddPointLights(std::vector<PointLight>& pointLights);
+void AddSpotLight();
 
-void UpdateSpotLight(std::vector<Shader>& shaders);
-void UpdatePointLights(std::vector<Shader>& shaders, std::vector<PointLight>& pointLights,
+void UpdateSpotLight();
+void UpdatePointLights(std::vector<PointLight>& pointLights,
 	Shader& lampShader, GLuint lampVAO);
 
-void GenPointLights(std::vector<PointLight>& pointLights);
+
+
 
 int main()
 {
@@ -349,6 +414,25 @@ int main()
 	modelShaderNormals.BindUniformBuffer("Settings", 1);
 	postProcShader.BindUniformBuffer("Settings", 1);
 	skyboxShader.BindUniformBuffer("Settings", 1);
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/////////////////////////////////////LIGHTS UNIFORM BUFFER////////////////////////////////////	
+
+	glGenBuffers(1, &lightsUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, lightsUBO);
+	glBufferData(GL_UNIFORM_BUFFER, lights.lightsSize, NULL, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBufferBase(
+		GL_UNIFORM_BUFFER,
+		2,					//binding point
+		lightsUBO);		//uniform buffer ID
+
+	shader.BindUniformBuffer(
+		"Lights",		//uniform block name
+		2);				//binding point
+
+	modelShader.BindUniformBuffer("Lights", 2);
+	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -468,17 +552,14 @@ int main()
 
 
 	///////////////////////////////////////LIGHTS////////////////////////////////////
-
-	std::vector<Shader> shaders{ shader, modelShader };
-
+		
 	std::vector<PointLight> pointLights;
-	GenPointLights(pointLights);
 	
-	AddDirectedLight(shaders);
+	AddDirectedLight();
 
-	AddPointLights(shaders, pointLights);
+	AddPointLights(pointLights);
 
-	AddSpotLight(shaders);
+	AddSpotLight();
 
 	///////////////////////////////////INSTANCING//////////////////////////////////
 
@@ -592,10 +673,10 @@ int main()
 
 		//////////////////////////////////////LIGHTS//////////////////////////////////
 		if (settings.bPointLights)
-			UpdatePointLights(shaders, pointLights, shader, cubeVAO);
+			UpdatePointLights(pointLights, shader, cubeVAO);
 
 		if (settings.bSpotLight)
-			UpdateSpotLight(shaders);
+			UpdateSpotLight();
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -1584,170 +1665,123 @@ void SetupFrameBufferMS(GLuint& framebuffer, GLuint& colorBufferMS, GLuint& rend
 
 }
 
-void AddDirectedLight(std::vector<Shader>& shaders)
+void AddDirectedLight()
 {
-	for (GLint i = 0; i < shaders.size(); i++)
-	{
-		shaders[i].UseProgram();
-		/////////directed light
-		shaders[i].SetVec3("directionalLight.direction", -0.2f, -1.0f, -0.3f);
-		shaders[i].SetVec3("directionalLight.ambient", 0.15f, 0.15f, 0.15f);
-		shaders[i].SetVec3("directionalLight.diffuse", 0.5f, 0.5f, 0.5f); // darken the light a bit to fit the scene
-		shaders[i].SetVec3("directionalLight.specular", 0.5f, 0.5f, 0.5f);
-	}
-}
-void AddPointLights(std::vector<Shader>& shaders, std::vector<PointLight>& pointLights)
-{
-	for (GLint i = 0; i < shaders.size(); i++)
-	{
-		Shader shader = shaders[i];
-		shader.UseProgram();
-		for (int lightId = 0; lightId < pointLights.size(); lightId++)
-		{
-			char num[10];
-			_itoa_s(lightId, num, 10);
+	lights.directionalLight.direction = glm::vec4(-0.2f, -1.0f, -0.3f, 0.0f);
+	lights.directionalLight.ambient = glm::vec4(0.15f, 0.15f, 0.15f, 0.0f);
+	lights.directionalLight.diffuse = glm::vec4(0.5f, 0.5f, 0.5f, 0.0f); // darken the light a bit to fit the scene
+	lights.directionalLight.specular = glm::vec4(0.5f, 0.5f, 0.5f, 0.0f);	
 
-			std::string str0 = "pointLights[";
-			std::string str1 = "].ambient";
-			std::string res = str0 + num + str1;
-
-			glm::vec3 ambient = pointLights[lightId].ambient;
-			glm::vec3 diffuse = pointLights[lightId].diffuse;
-			glm::vec3 specular = pointLights[lightId].specular;
-
-			shader.SetVec3(res.c_str(), ambient);
-			str1 = "].diffuse";
-			res = str0 + num + str1;
-			shader.SetVec3(res.c_str(), diffuse); // darken the light a bit to fit the scene
-			str1 = "].specular";
-			res = str0 + num + str1;
-			shader.SetVec3(res.c_str(), specular);
-
-			str1 = "].constant";
-			res = str0 + num + str1;
-			shader.SetFloat(res.c_str(), pointLights[lightId].constant);
-			str1 = "].linear";
-			res = str0 + num + str1;
-			//shader.SetFloat(res.c_str(), 0.09f);//50
-			shader.SetFloat(res.c_str(), pointLights[lightId].linear);//600
-			str1 = "].quadratic";
-			res = str0 + num + str1;
-			//shader.SetFloat(res.c_str(), 0.032f);
-			shader.SetFloat(res.c_str(), pointLights[lightId].quadratic);
-
-			str1 = "].bEnabled";
-			res = str0 + num + str1;
-			shader.SetInt(res.c_str(), true);//set boolean uniforn through integer
-		}
-	}
-}
-void AddSpotLight(std::vector<Shader>& shaders)
-{
-	for (GLint i = 0; i < shaders.size(); i++)
-	{
-		shaders[i].UseProgram();
-		/////////spot light		
-		
-		shaders[i].SetFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
-		shaders[i].SetFloat("spotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
-
-		shaders[i].SetVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
-		shaders[i].SetVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f); // darken the light a bit to fit the scene
-		shaders[i].SetVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
-	}
+	lights.UpdateLights();
 }
 
-void UpdateSpotLight(std::vector<Shader>& shaders)
+void AddPointLights(std::vector<PointLight>& pointLights)
 {
-	for (GLint i = 0; i < shaders.size(); i++)
+	pointLights.push_back(
+		PointLight(
+			glm::vec4(1.2f, 1.0f, 2.0f, 0.0f),
+			glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
+			glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+			glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+	pointLights.push_back(
+		PointLight(
+			glm::vec4(2.3f, -2.3f, -2.0f, 0.0f),
+			glm::vec4(0.1f, 0.0f, 0.0f, 1.0f),
+			glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+			glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)));
+	pointLights.push_back(
+		PointLight(
+			glm::vec4(-2.0f, 2.0f, -2.0f, 0.0f),
+			glm::vec4(0.0f, 0.1f, 0.0f, 1.0f),
+			glm::vec4(0.0f, 1.0f, 0.0f, 1.0f),
+			glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)));
+	pointLights.push_back(
+		PointLight(
+			glm::vec4(0.0f, 0.0f, -2.0f, 0.0f),
+			glm::vec4(0.0f, 0.0f, 0.1f, 1.0f),
+			glm::vec4(0.0f, 0.0f, 1.0f, 1.0f),
+			glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)));
+
+	for (GLint i = 0; i < pointLights.size(); i++)
 	{
-		shaders[i].UseProgram();
-		/////////spot light
-		shaders[i].SetVec3("spotLight.position", camera.Position);
-		shaders[i].SetVec3("spotLight.direction", camera.Front);
+		lights.pointLights[i] = pointLights[i];
 	}
+
+	lights.UpdateLights();
+}
+void AddSpotLight()
+{
+	lights.spotLight.cutOff = glm::cos(glm::radians(12.5f));
+	lights.spotLight.outerCutOff = glm::cos(glm::radians(17.5f));
+
+	lights.spotLight.ambient = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	lights.spotLight.diffuse = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f); // darken the light a bit to fit the scene
+	lights.spotLight.specular = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
+
+	lights.UpdateLights();
 }
 
-void UpdatePointLights(std::vector<Shader>& shaders, std::vector<PointLight>& pointLights,
+void UpdateSpotLight()
+{	
+	lights.spotLight.position = glm::vec4(camera.Position, 0.0f);
+	lights.spotLight.direction = glm::vec4(camera.Front, 0.0f);	
+
+	lights.UpdateLights();
+}
+
+void UpdatePointLights(std::vector<PointLight>& pointLights,
 	Shader& lampShader, GLuint lampVAO)
 {
-	for (GLint i = 0; i < shaders.size(); i++)
+
+	for (int lightId = 0; lightId < pointLights.size(); lightId++)
 	{
-		Shader shader = shaders[i];
-		shader.UseProgram();
-		for (int lightId = 0; lightId < pointLights.size(); lightId++)
-		{
-			GLfloat axisCoef = 1.f / (pointLights.size())* lightId;
+		GLfloat axisCoef = 1.f / (pointLights.size())* lightId;
 
-			glm::mat4 model;
-			//model = glm::rotate(model, ((sin((GLfloat)glfwGetTime()) / 2) + 0.5f)/* * glm::radians(20.0f )*/,
-				//glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::rotate(model, ((GLfloat)glfwGetTime() * glm::radians(10.0f*(lightId + 1))),
-				glm::vec3(axisCoef, 1.0f - axisCoef, axisCoef));
+		glm::mat4 model;
+		//model = glm::rotate(model, ((sin((GLfloat)glfwGetTime()) / 2) + 0.5f)/* * glm::radians(20.0f )*/,
+			//glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::rotate(model, ((GLfloat)glfwGetTime() * glm::radians(10.0f*(lightId + 1))),
+			glm::vec3(axisCoef, 1.0f - axisCoef, axisCoef));
 
-			glm::vec3 lampPosition = pointLights[lightId].position;
+		glm::vec3 lampPosition = pointLights[lightId].position;
 
-			model = glm::translate(model, lampPosition);
-			model = glm::scale(model, glm::vec3(0.2f));
+		model = glm::translate(model, lampPosition);
+		model = glm::scale(model, glm::vec3(0.2f));
 
-			glm::vec4 transLightPos = model * glm::vec4(lampPosition, 1.f);
+		glm::vec4 transLightPos = model * glm::vec4(lampPosition, 1.f);
 
-			//draw lamps only at first iteration
-			if (i == 0)
-			{
-				lampShader.UseProgram();
+		//Draw Lamp
+		lampShader.UseProgram();
 
-				lampShader.SetMat4("model", model);
-				lampShader.SetBool("bStencil", true);
-				glm::vec4 lampColor = glm::vec4(pointLights[lightId].diffuse, 1.0f);
-				lampShader.SetVec4("borderColor", lampColor);
+		lampShader.SetMat4("model", model);
+		lampShader.SetBool("bStencil", true);
+		glm::vec4 lampColor = pointLights[lightId].diffuse;
+		lampShader.SetVec4("borderColor", lampColor);
 
-				glBindVertexArray(lampVAO);
-				glDrawArrays(GL_TRIANGLES, 0, 36);
-				glBindVertexArray(0);
+		glBindVertexArray(lampVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(0);
 
-				lampShader.SetBool("bStencil", false);
-			}
+		lampShader.SetBool("bStencil", false);
 
-			char num[10];
-			_itoa_s(lightId, num, 10);
-
-			std::string str0 = "pointLights[";
-			std::string str1 = "].position";
-			std::string res = str0 + num + str1;
-
-			shader.UseProgram();
-
-			shader.SetVec3(res.c_str(), transLightPos);
-		}
+		//Set light position
+		lights.pointLights[lightId].position = transLightPos;
 	}
+
+	lights.UpdateLights();
 }
 
-void GenPointLights(std::vector<PointLight>& pointLights)
+GLsizeiptr CalcStructSizeUBO(GLsizeiptr structSize)
 {
-	pointLights.push_back(
-		PointLight(
-			glm::vec3(1.2f, 1.0f, 2.0f),
-			glm::vec3(0.1f, 0.1f, 0.1f),
-			glm::vec3(1.0f, 1.0f, 1.0f),
-			glm::vec3(1.0f, 1.0f, 1.0f)));
-	pointLights.push_back(
-		PointLight(
-			glm::vec3(2.3f, -2.3f, -2.0f),
-			glm::vec3(0.1f, 0.0f, 0.0f),
-			glm::vec3(1.0f, 0.0f, 0.0f),
-			glm::vec3(1.0f, 0.0f, 0.0f)));
-	pointLights.push_back(
-		PointLight(
-			glm::vec3(-2.0f, 2.0f, -2.0f),
-			glm::vec3(0.0f, 0.1f, 0.0f),
-			glm::vec3(0.0f, 1.0f, 0.0f),
-			glm::vec3(0.0f, 1.0f, 0.0f)));
-	pointLights.push_back(
-		PointLight(
-			glm::vec3(0.0f, 0.0f, -2.0f),
-			glm::vec3(0.0f, 0.0f, 0.1f),
-			glm::vec3(0.0f, 0.0f, 1.0f),
-			glm::vec3(0.0f, 0.0f, 1.0f)));
+	GLsizeiptr vec4Size = sizeof(glm::vec4);
+	GLfloat vec4NumF = (GLfloat)structSize / (GLfloat)vec4Size;
+	GLfloat vec4NumI = (GLfloat)((GLint)vec4NumF);
 
+	//
+	if (vec4NumI < vec4NumF)//struct Lights is not multiple of glm::vec4
+	{
+		structSize = sizeof(glm::vec4) * (vec4NumI + 1);
+	}
+
+	return structSize;
 }

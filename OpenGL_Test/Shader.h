@@ -167,7 +167,8 @@ public:
 
 	void BindUniformBuffer(const std::string &bufferName, GLint bindingPoint) const
 	{
-		glUniformBlockBinding(ID, glGetUniformBlockIndex(ID, bufferName.c_str()), bindingPoint);
+		GLuint UniformBlockIndex = glGetUniformBlockIndex(ID, bufferName.c_str());
+		glUniformBlockBinding(ID, UniformBlockIndex, bindingPoint);
 	}
 
 	
