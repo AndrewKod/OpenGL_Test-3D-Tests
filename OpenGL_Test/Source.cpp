@@ -300,6 +300,9 @@ void UpdatePointLights(std::vector<PointLight>& pointLights,
 	Shader& lampShader, GLuint lampVAO);
 
 
+const GLuint DIR_SHADOW_WIDTH = 1024, DIR_SHADOW_HEIGHT = 1024;
+
+void SetupDirLightFBO(GLuint& dirLightFBO, GLuint& colorBuffer, GLuint& renderBuffer);
 
 
 int main()
@@ -569,11 +572,20 @@ int main()
 
 	GLuint modelMatricesVBO = 0;
 
-	GLuint amount = 51;
+	GLuint amount = 31;
 	glm::mat4 *modelMatrices = new glm::mat4[amount];
 	FillModelMatrices(amount, modelMatrices);
 
 	UpdateVAO(skull, amount, modelMatrices, modelMatricesVBO);
+
+
+	///////////////////////////////////SHADOWS//////////////////////////////////////
+
+	//Depth map for directional light
+	GLuint dirLightFBO;
+	GLuint dirLightDepthMapTex;//Depth map texture
+	SetupDirLightFBO(dirLightFBO, dirLightDepthMapTex, renderBuffer);
+
 
 
 	
@@ -706,6 +718,8 @@ int main()
 
 	glDeleteBuffers(1, &modelMatricesVBO);
 	delete[] modelMatrices;
+
+	glDeleteFramebuffers(1, &dirLightFBO);
 
     glfwTerminate();
     return 0;
@@ -1784,4 +1798,27 @@ GLsizeiptr CalcStructSizeUBO(GLsizeiptr structSize)
 	}
 
 	return structSize;
+}
+
+void SetupDirLightFBO(GLuint& dirLightFBO, GLuint& dirLightDepthMapTex, GLuint& renderBuffer)
+{
+	glGenFramebuffers(1, &dirLightFBO);
+
+		
+	glGenTextures(1, &dirLightDepthMapTex);
+	glBindTexture(GL_TEXTURE_2D, dirLightDepthMapTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+		DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, dirLightFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, dirLightDepthMapTex, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
 }
