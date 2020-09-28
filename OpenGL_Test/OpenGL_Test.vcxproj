@@ -134,6 +134,8 @@
   <ItemGroup>
     <None Include="Shaders\Cubemap Fragment Shader.glsl" />
     <None Include="Shaders\Cubemap Vertex Shader.glsl" />
+    <None Include="Shaders\Dir Light Depth FS.glsl" />
+    <None Include="Shaders\Dir Light Depth VS.glsl" />
     <None Include="Shaders\Fragment Shader Model.glsl" />
     <None Include="Shaders\Fragment Shader PP.glsl" />
     <None Include="Shaders\Fragment Shader.glsl" />

@@ -258,15 +258,19 @@ void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO);
 void GenPostProcVAO(GLuint& postProcVAO, GLuint& postProcVBO);
 void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO);
 
+void FillModelMatrices(std::vector<glm::mat4>& cubeModelMatrices);
 
-void DrawCubes(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTexture,
+
+void DrawCubes(Shader & shader, GLuint VAO, const std::vector<glm::mat4>& cubeModelMatrices,
+	GLuint diffTexture = 0, GLuint specTexture = 0,
 	glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false, glm::vec4 borderColor = glm::vec4(0.f));
-void DrawFloor(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTexture = 0);
+void DrawFloor(Shader & shader, GLuint VAO, GLuint diffTexture = 0, GLuint specTexture = 0);
 
 void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vector<glm::vec3>& positions, bool bSortPositions);
 
 void DrawScene(Shader & shader, Shader & skyboxShader,
-	GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
+	GLuint cubeVAO, const std::vector<glm::mat4>& cubeModelMatrices,
+	GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
 	GLuint cubeDiffTexture, GLuint cubeSpecTexture, GLuint floorTexture, GLuint cubemapTexture);
 
 void DrawPostProc(Shader & shader, GLuint VAO,
@@ -304,6 +308,8 @@ const GLuint DIR_SHADOW_WIDTH = 1024, DIR_SHADOW_HEIGHT = 1024;
 
 void SetupDirLightFBO(GLuint& dirLightFBO, GLuint& colorBuffer, GLuint& renderBuffer);
 
+void DrawSceneForDirShadows(Shader & dirLightDepthShader, 
+	GLuint cubeVAO, GLuint planeVAO, const std::vector<glm::mat4>& cubeModelMatrices);
 
 int main()
 {
@@ -377,6 +383,8 @@ int main()
 		"Shaders/Geometry Shader Model.glsl");
 	Shader modelShaderNormals("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
 		"Shaders/Geometry Shader Model Normals.glsl");
+
+	Shader dirLightDepthShader("Shaders/Dir Light Depth VS.glsl", "Shaders/Dir Light Depth FS.glsl");
 	
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
@@ -587,8 +595,8 @@ int main()
 	SetupDirLightFBO(dirLightFBO, dirLightDepthMapTex, renderBuffer);
 
 
-
-	
+	std::vector<glm::mat4> cubeModelMatrices;
+	FillModelMatrices(cubeModelMatrices);
 
 	//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     // render loop
@@ -605,9 +613,21 @@ int main()
         // -----
         processInput(window);
 
+		/////////////////////////////////////////////SHADOWS//////////////////////////////////////////////
+		//Scene drawing for shadows
+		glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
+		glBindFramebuffer(GL_FRAMEBUFFER, dirLightFBO);		
+		DrawSceneForDirShadows(dirLightDepthShader, cubeVAO, planeVAO, cubeModelMatrices);
+
+		// 2. рисуем сцену как обычно с тен€ми (использу€ карту глубины)
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+
+
+		////////////////////////////////////////Common Scene drawing/////////////////////////////////////////
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
+		DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
 			cubeTexture, cubeSpecTexture, floorTexture, cubemapTexture);
 
 
@@ -620,7 +640,7 @@ int main()
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		DrawScene(shader, skyboxShader, cubeVAO, planeVAO, skyboxVAO, uboBlock,
+		DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
 			cubeTexture, cubeSpecTexture, floorTexture, cubemapTexture);
 
         // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
@@ -726,7 +746,8 @@ int main()
 }
 
 void DrawScene(Shader & shader, Shader & skyboxShader,
-	GLuint cubeVAO, GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
+	GLuint cubeVAO, const std::vector<glm::mat4>& cubeModelMatrices,
+	GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
 	GLuint cubeDiffTexture, GLuint cubeSpecTexture, GLuint floorTexture, GLuint cubemapTexture)
 {
 	
@@ -749,37 +770,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 
 	glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
 
-	//glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 	
-	//glStencilMask(0x00);
-	//// floor
-	//DrawFloor(shader, planeVAO, floorTexture);
-	////grass
-	//
-
-	//// 1st. render pass, draw objects as normal, writing to the stencil buffer
-	//// --------------------------------------------------------------------
-	//glStencilFunc(GL_ALWAYS, 1, 0xFF);
-	//glStencilMask(0xFF);
-	//// cubes
-	//DrawCubes(shader, cubeVAO, cubeTexture);
-
-	//// 2nd. render pass: now draw slightly scaled versions of the objects, this time disabling stencil writing.
-	//// Because the stencil buffer is now filled with several 1s. The parts of the buffer that are 1 are not drawn,
-	//// thus only drawing the objects' size differences, making it look like borders.
-	//// -----------------------------------------------------------------------------------------------------------------------------
-	//glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-	//glStencilMask(0x00);
-	////glDisable(GL_DEPTH_TEST);
-
-	//float scale = 1.03f;
-	//
-	//// cubes
-	//DrawCubes(shader, cubeVAO, cubeTexture, glm::vec3(scale), true);
-
-	//glStencilMask(0xFF);
-	//glStencilFunc(GL_ALWAYS, 0, 0xFF);
-	//glEnable(GL_DEPTH_TEST);
 
 	////////////////////////Alternative way to draw cubes with borders//////////////////////////
 	glStencilOp(
@@ -792,7 +783,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	glStencilFunc(GL_ALWAYS, 1, 0xFF);//replace stencil val by 2
 	glStencilMask(0xFF);
 	// cubes
-	DrawCubes(shader, cubeVAO, cubeDiffTexture, cubeSpecTexture);
+	DrawCubes(shader, cubeVAO, cubeModelMatrices, cubeDiffTexture, cubeSpecTexture);
 
 	// 2nd. render pass: now draw slightly scaled versions of the objects, this time disabling stencil writing.
 	// Because the stencil buffer is now filled with several 1s. The parts of the buffer that are 1 are not drawn,
@@ -806,7 +797,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	float scale = 1.03f;
 	glm::vec4 borderColor(1.0, 1.0, 0.0, 1.0);
 	// cubes for borders
-	DrawCubes(shader, cubeVAO, cubeDiffTexture, cubeSpecTexture, glm::vec3(scale), true, borderColor);
+	DrawCubes(shader, cubeVAO, cubeModelMatrices, cubeDiffTexture, cubeSpecTexture, glm::vec3(scale), true, borderColor);
 
 	
 	//Test drawing borders over borders drawn already
@@ -1055,7 +1046,8 @@ unsigned int loadTexture(char const * path, bool bSRGB)
     return textureID;
 }
 
-void DrawCubes(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTexture,
+void DrawCubes(Shader & shader, GLuint VAO, const std::vector<glm::mat4>& cubeModelMatrices,
+	GLuint diffTexture, GLuint specTexture,
 	glm::vec3 scale, bool bStencil, glm::vec4 borderColor)
 {
 	shader.UseProgram();
@@ -1065,24 +1057,28 @@ void DrawCubes(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTextu
 	
 	glBindVertexArray(VAO);
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, diffTexture);
-	shader.SetInt("material.diffuse[0]", 0);
+	if (diffTexture != 0)
+	{
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, diffTexture);
+		shader.SetInt("material.diffuse[0]", 0);
+	}
 
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, specTexture);
-	shader.SetInt("material.specular[0]", 1);
+	if (specTexture != 0)
+	{
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, specTexture);
+		shader.SetInt("material.specular[0]", 1);
+	}
 
-	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
-	model = glm::scale(model, scale);
-	shader.SetMat4("model", model);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
-	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
-	model = glm::scale(model, scale);
-	shader.SetMat4("model", model);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
+	for (int i = 0; i < cubeModelMatrices.size(); i++)
+	{
+		glm::mat4 model = cubeModelMatrices[i];
+		model = glm::scale(model, scale);
+		shader.SetMat4("model", model);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
+	
 
 	glBindVertexArray(0);
 
@@ -1095,13 +1091,19 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTextu
 
 	glBindVertexArray(VAO);
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, diffTexture);
-	shader.SetInt("material.diffuse[0]", 0);
+	if (diffTexture != 0)
+	{
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, diffTexture);
+		shader.SetInt("material.diffuse[0]", 0);
+	}
 
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, specTexture);
-	shader.SetInt("material.specular[0]", 1);
+	if (specTexture != 0)
+	{
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, specTexture);
+		shader.SetInt("material.specular[0]", 1);
+	}
 
 	shader.SetMat4("model", glm::mat4(1.0f));
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -1415,14 +1417,14 @@ void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO)
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
 {
 	float planeVertices[] = {
-		// positions          // texture Coords		//norm
-		 5.0f, -0.5f,  5.0f,  2.0f, 0.0f,			0.0f,  1.0f,  0.0f,
-		-5.0f, -0.5f,  5.0f,  0.0f, 0.0f,			0.0f,  1.0f,  0.0f,
-		-5.0f, -0.5f, -5.0f,  0.0f, 2.0f,			0.0f,  1.0f,  0.0f,
+		// positions			// texture Coords		//norm
+		 50.0f, -0.5f,  50.0f,	2.0f, 0.0f,			0.0f,  1.0f,  0.0f,
+		-50.0f, -0.5f,  50.0f,  0.0f, 0.0f,			0.0f,  1.0f,  0.0f,
+		-50.0f, -0.5f, -50.0f,  0.0f, 2.0f,			0.0f,  1.0f,  0.0f,
 
-		 5.0f, -0.5f,  5.0f,  2.0f, 0.0f,			0.0f,  1.0f,  0.0f,
-		-5.0f, -0.5f, -5.0f,  0.0f, 2.0f,			0.0f,  1.0f,  0.0f,
-		 5.0f, -0.5f, -5.0f,  2.0f, 2.0f,			0.0f,  1.0f,  0.0f
+		 50.0f, -0.5f,  50.0f,  2.0f, 0.0f,			0.0f,  1.0f,  0.0f,
+		-50.0f, -0.5f, -50.0f,  0.0f, 2.0f,			0.0f,  1.0f,  0.0f,
+		 50.0f, -0.5f, -50.0f,  2.0f, 2.0f,			0.0f,  1.0f,  0.0f
 	};
 
 	glGenVertexArrays(1, &planeVAO);
@@ -1821,4 +1823,56 @@ void SetupDirLightFBO(GLuint& dirLightFBO, GLuint& dirLightDepthMapTex, GLuint& 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
+}
+
+void DrawSceneForDirShadows(Shader & dirLightDepthShader,
+	GLuint cubeVAO, GLuint planeVAO, const std::vector<glm::mat4>& cubeModelMatrices)
+{
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	GLfloat near_plane = 1.0f, far_plane = 7.5f;
+	glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);	
+
+	glm::mat4 lightView = glm::lookAt(
+		glm::vec3(-lights.directionalLight.direction),	//cam pos
+		glm::vec3(lights.directionalLight.direction),	//cam dir
+		glm::vec3(0.0f, 1.0f, 0.0f));					//up vec
+
+
+	glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+
+	dirLightDepthShader.UseProgram();
+
+	dirLightDepthShader.SetMat4("lightSpaceMatrix", lightSpaceMatrix);
+
+
+	//Draw cubes
+	DrawCubes(dirLightDepthShader, cubeVAO, cubeModelMatrices);
+
+	//draw floor
+	DrawFloor(dirLightDepthShader, planeVAO);
+}
+
+void FillModelMatrices(std::vector<glm::mat4>& cubeModelMatrices)
+{
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+	cubeModelMatrices.push_back(model);
+
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+	cubeModelMatrices.push_back(model);
+
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(2.0f, 0.0f, 2.0f));
+	model = glm::rotate(model, glm::radians(45.f), glm::vec3(1.0f));
+	model = glm::scale(model, glm::vec3(0.5f));
+	cubeModelMatrices.push_back(model);
+
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(-1.0f, 2.0f, 2.0f));
+	model = glm::rotate(model, glm::radians(30.f), glm::vec3(1.0f));
+	model = glm::scale(model, glm::vec3(1.3f));
+	cubeModelMatrices.push_back(model);
+	
 }

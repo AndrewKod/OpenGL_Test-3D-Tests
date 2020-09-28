@@ -2,35 +2,36 @@
 e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\shader.h(60): warning C4101: 'e': unreferenced local variable
 e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(44): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
 e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(45): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(588): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(636): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(972): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(973): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(977): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(978): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(980): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(981): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(990): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1162): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1558): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1577): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1581): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1705): warning C4018: '<': signed/unsigned mismatch
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1736): warning C4018: '<': signed/unsigned mismatch
-e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1783): warning C4244: '=': conversion from 'GLfloat' to 'GLsizeiptr', possible loss of data
-glfw3.lib(context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(context.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(init.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(input.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(input.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(monitor.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(monitor.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(vulkan.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(vulkan.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(window.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(window.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_init.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_joystick.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_joystick.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_monitor.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_monitor.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_time.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_time.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_thread.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_thread.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_window.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_window.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(wgl_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(wgl_context.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(egl_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(egl_context.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(osmesa_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(osmesa_context.obj)' or at 'E:\└эфЁю\╧ЁюуЁрььшЁютрэшх\╠╬╚ ╧╨╬┼╩╥█\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(608): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(668): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(977): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(978): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(982): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(983): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(985): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(986): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(995): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1074): warning C4018: '<': signed/unsigned mismatch
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1178): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1574): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1593): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1597): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1721): warning C4018: '<': signed/unsigned mismatch
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1752): warning C4018: '<': signed/unsigned mismatch
+e:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1799): warning C4244: '=': conversion from 'GLfloat' to 'GLsizeiptr', possible loss of data
+glfw3.lib(context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(context.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(init.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(input.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(input.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(monitor.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(monitor.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(vulkan.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(vulkan.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(window.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(window.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_init.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_joystick.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_joystick.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_monitor.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_monitor.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_time.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_time.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_thread.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_thread.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_window.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_window.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(wgl_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(wgl_context.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(egl_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(egl_context.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(osmesa_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(osmesa_context.obj)' or at 'E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
   OpenGL_Test.vcxproj -> E:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\OpenGL_Test.exe
