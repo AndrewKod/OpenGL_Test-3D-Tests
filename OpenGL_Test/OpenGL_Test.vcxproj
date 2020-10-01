@@ -70,8 +70,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>E:\OpenGL Files\include\GLFW;E:\OpenGL Files\include\GLEW;E:\OpenGL Files\include\GLI;E:\OpenGL Files\include\glm;E:\OpenGL Files\include\SOIL;E:\OpenGL Files\include\SOIL\original;E:\OpenGL Files\include\SOIL2;E:\OpenGL Files\include\assimp;E:\OpenGL Files\include\assimp\Compiler;E:\OpenGL Files\include\assimp\port\AndroidJNI;E:\OpenGL Files\include;E:\OpenGL Files\include\GLAD;E:\OpenGL Files\include\GLAD\glad;E:\OpenGL Files\include\GLAD\KHR;$(IncludePath)</IncludePath>
-    <LibraryPath>E:\OpenGL Files\libs\GLFW;E:\OpenGL Files\libs\GLEW;E:\OpenGL Files\libs\SOIL;E:\OpenGL Files\libs\Assimp;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\OpenGL Files\include\GLFW;D:\OpenGL Files\include\GLEW;D:\OpenGL Files\include\GLI;D:\OpenGL Files\include\glm;D:\OpenGL Files\include\SOIL;D:\OpenGL Files\include\SOIL\original;D:\OpenGL Files\include\SOIL2;D:\OpenGL Files\include\assimp;D:\OpenGL Files\include\assimp\Compiler;D:\OpenGL Files\include\assimp\port\AndroidJNI;D:\OpenGL Files\include;D:\OpenGL Files\include\GLAD;D:\OpenGL Files\include\GLAD\glad;D:\OpenGL Files\include\GLAD\KHR;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\OpenGL Files\libs\GLFW;D:\OpenGL Files\libs\GLEW;D:\OpenGL Files\libs\SOIL;D:\OpenGL Files\libs\Assimp;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
