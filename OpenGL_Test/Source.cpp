@@ -344,7 +344,7 @@ int main()
 	glfwSetKeyCallback(window, key_callback);
 
     // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);	
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -598,7 +598,11 @@ int main()
 	std::vector<glm::mat4> cubeModelMatrices;
 	FillModelMatrices(cubeModelMatrices);
 
-	//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+	//after installing new OS appears screen clipping
+	//which disappears after changing window size
+	glfwSetWindowSize(window, SCR_WIDTH + 1, SCR_HEIGHT + 1);
+	glfwSetWindowSize(window, SCR_WIDTH - 1, SCR_HEIGHT - 1);
+	
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -615,13 +619,13 @@ int main()
 
 		/////////////////////////////////////////////SHADOWS//////////////////////////////////////////////
 		//Scene drawing for shadows
-		glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
+		/*glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
 		glBindFramebuffer(GL_FRAMEBUFFER, dirLightFBO);		
-		DrawSceneForDirShadows(dirLightDepthShader, cubeVAO, planeVAO, cubeModelMatrices);
+		DrawSceneForDirShadows(dirLightDepthShader, cubeVAO, planeVAO, cubeModelMatrices);*/
 
 		// 2. рисуем сцену как обычно с тен€ми (использу€ карту глубины)
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
 
 		////////////////////////////////////////Common Scene drawing/////////////////////////////////////////

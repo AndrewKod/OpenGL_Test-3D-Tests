@@ -73,6 +73,10 @@
     <IncludePath>D:\OpenGL Files\include\GLFW;D:\OpenGL Files\include\GLEW;D:\OpenGL Files\include\GLI;D:\OpenGL Files\include\glm;D:\OpenGL Files\include\SOIL;D:\OpenGL Files\include\SOIL\original;D:\OpenGL Files\include\SOIL2;D:\OpenGL Files\include\assimp;D:\OpenGL Files\include\assimp\Compiler;D:\OpenGL Files\include\assimp\port\AndroidJNI;D:\OpenGL Files\include;D:\OpenGL Files\include\GLAD;D:\OpenGL Files\include\GLAD\glad;D:\OpenGL Files\include\GLAD\KHR;$(IncludePath)</IncludePath>
     <LibraryPath>D:\OpenGL Files\libs\GLFW;D:\OpenGL Files\libs\GLEW;D:\OpenGL Files\libs\SOIL;D:\OpenGL Files\libs\Assimp;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>D:\OpenGL Files\include\GLFW;D:\OpenGL Files\include\GLEW;D:\OpenGL Files\include\GLI;D:\OpenGL Files\include\glm;D:\OpenGL Files\include\SOIL;D:\OpenGL Files\include\SOIL\original;D:\OpenGL Files\include\SOIL2;D:\OpenGL Files\include\assimp;D:\OpenGL Files\include\assimp\Compiler;D:\OpenGL Files\include\assimp\port\AndroidJNI;D:\OpenGL Files\include;D:\OpenGL Files\include\GLAD;D:\OpenGL Files\include\GLAD\glad;$(VC_IncludePath);D:\OpenGL Files\include\GLAD\KHR;$(WindowsSDK_IncludePath)</IncludePath>
+    <LibraryPath>D:\OpenGL Files\libs\GLFW;D:\OpenGL Files\libs\GLEW;D:\OpenGL Files\libs\SOIL;D:\OpenGL Files\libs\Assimp;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -94,6 +98,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>assimp-vc141-mtd.lib;SOIL.lib;glew32s.lib;opengl32.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
