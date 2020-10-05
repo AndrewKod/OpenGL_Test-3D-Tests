@@ -55,6 +55,7 @@ void main() {
 		Position =	gs_in[i].fs_position;
 
 		FragPos =	gs_in[i].fs_fragPos;
+
 		FragPosDirLightSpace = gs_in[i].fs_fragPosDirLightSpace;
 		
 		EmitVertex();

@@ -13,10 +13,11 @@ struct Material {
   
 uniform Material material;
 
-////////////////////////////LIGHTS////////////////////////////
+////////////////////////////LIGHTS///////////////////
+
 struct DirectionalLight {
 	//position for shadows calculations
-	vec4  position;
+	//vec4  position; //uncomment this for behold a super-effect/////////
     vec4 direction;
 
     vec4 ambient;
@@ -52,10 +53,6 @@ struct SpotLight {
   
 };
 
-
-//uniform DirectionalLight directionalLight;
-//uniform PointLight pointLights[NUM_POINT_LIGHTS];
-//uniform SpotLight spotLight;
 
 float zNear = 0.1; 
 float zFar  = 100.0; 
@@ -233,7 +230,7 @@ vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCol
 	}
 
 	// calculate shadow
-    float shadow = DirLightShadowCalculation();
+    float shadow = 0.0;
 
     // комбинируем результаты
     vec3 ambient  = vec3(directionalLight.ambient)  * diffuseColor;
