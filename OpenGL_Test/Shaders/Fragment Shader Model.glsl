@@ -15,6 +15,8 @@ uniform Material material;
 
 ////////////////////////////LIGHTS////////////////////////////
 struct DirectionalLight {
+	//position for shadows calculations
+	vec4  position;
     vec4 direction;
 
     vec4 ambient;
@@ -120,6 +122,13 @@ layout (std140) uniform Lights
 	PointLight pointLights[NUM_POINT_LIGHTS];
 };
 
+
+//Shadows
+uniform sampler2D dirLight_ShadowMap;
+in vec4 FragPosDirLightSpace;
+
+float DirLightShadowCalculation();
+
 void main()
 {   
 	vec2 texCoords = vec2(TexCoords.x, binvertUVs ? 1.0 - TexCoords.y : TexCoords.y);
@@ -223,10 +232,15 @@ vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCol
 		spec = pow(max(dot(normal, halfwayDir), 0.0), material.shininess * 2);
 	}
 
+	// calculate shadow
+    float shadow = DirLightShadowCalculation();
+
     // комбинируем результаты
     vec3 ambient  = vec3(directionalLight.ambient)  * diffuseColor;
-    vec3 diffuse  = vec3(directionalLight.diffuse)  * diff * diffuseColor;
-    vec3 specular = vec3(directionalLight.specular) * spec * specularColor;
+    vec3 diffuse  = vec3(directionalLight.diffuse)  * diff * diffuseColor * (1.0 - shadow);
+    vec3 specular = vec3(directionalLight.specular) * spec * specularColor * (1.0 - shadow);
+
+	
 
     return (ambient + diffuse + specular);
 }
@@ -307,4 +321,22 @@ vec3 CalcSpotLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCo
     vec3 specular = vec3(spotLight.specular) * spotSpec * specularColor;
 
     return (ambient + diffuse + specular);
+}
+
+float DirLightShadowCalculation()
+{
+	// perform perspective divide
+    vec3 projCoords = FragPosDirLightSpace.xyz / FragPosDirLightSpace.w;
+
+	//transform coords from [-1, 1] to [0, 1] range
+	projCoords = projCoords * 0.5 + 0.5;
+
+	// get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
+    float closestDepth = texture(dirLight_ShadowMap, projCoords.xy).r; 
+    // get depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+    // check whether current frag pos is in shadow
+    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
+	
+    return shadow;
 }

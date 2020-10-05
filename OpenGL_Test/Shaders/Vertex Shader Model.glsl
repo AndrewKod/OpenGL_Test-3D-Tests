@@ -54,7 +54,12 @@ out VS_OUT {
 
 	vec3 fs_fragPos;	
 
+	vec4 fs_fragPosDirLightSpace;
+
 } vs_out;
+
+//Shadows
+uniform mat4 dirLightSpaceMatrix;
 
 void main()
 {
@@ -74,6 +79,8 @@ void main()
 	
 	vs_out.fs_fragPos = vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0f));		
 	
+	vs_out.fs_fragPosDirLightSpace = dirLightSpaceMatrix * vec4(vs_out.fs_fragPos, 1.0);
+
 	gl_Position = projection * view * (bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0);
 	
 }

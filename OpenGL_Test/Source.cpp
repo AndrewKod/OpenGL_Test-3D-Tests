@@ -122,22 +122,23 @@ GLuint settingsUBO = 0;
 
 struct Settings
 {
-	GLint bGammaCorrection =	false;//G
+	GLint bGammaCorrection =		false;//G
 	
-	GLint bExplode =			false;//M
-	GLint bPostProcess =		false;//P	
+	GLint bExplode =				false;//M
+	GLint bPostProcess =			false;//P	
 
-	GLint bAntiAliasing =		false;//U
-	GLint bBlit =				false;
+	GLint bAntiAliasing =			false;//U
+	GLint bBlit =					false;
 
-	GLint bPointLights =		false;//1
-	GLint bDirectionalLight =	false;//2
-	GLint bSpotLight =			false;//3
+	GLint bPointLights =			false;//1
+	GLint bDirectionalLight =		false;//2
+	GLint bSpotLight =				false;//3
 
-	GLint bShadows =			false;//O
+	GLint bShadows =				false;//O
+	GLint bShowDirLightDepthMap =	false;//L Draw depth map on post process rectangle
 
-	GLint bInstancing =			false;//I excluded from settingsUBO
-	GLint bShowNormals =		false;//N excluded from settingsUBO
+	GLint bInstancing =				false;//I excluded from settingsUBO
+	GLint bShowNormals =			false;//N excluded from settingsUBO
 
 	void UpdateSettings()
 	{
@@ -160,11 +161,14 @@ settings;
 //Here we are using vec4 for easier calculations for uniform buffer
 //But in shader we are using vec3 in uniform buffer
 struct DirectionalLight {
+	glm::vec4 position;
 	glm::vec4 direction;
 
 	glm::vec4 ambient;
 	glm::vec4 diffuse;
 	glm::vec4 specular;
+
+	glm::mat4 lightSpaceMatrix;
 };
 
 struct SpotLight {
@@ -605,27 +609,27 @@ int main()
 	
     // render loop
     // -----------
-    while (!glfwWindowShouldClose(window))
-    {
-        // per-frame time logic
-        // --------------------
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+	while (!glfwWindowShouldClose(window))
+	{
+		// per-frame time logic
+		// --------------------
+		float currentFrame = glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
 
-        // input
-        // -----
-        processInput(window);
+		// input
+		// -----
+		processInput(window);
 
 		/////////////////////////////////////////////SHADOWS//////////////////////////////////////////////
 		//Scene drawing for shadows
-		/*glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
-		glBindFramebuffer(GL_FRAMEBUFFER, dirLightFBO);		
-		DrawSceneForDirShadows(dirLightDepthShader, cubeVAO, planeVAO, cubeModelMatrices);*/
+		glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
+		glBindFramebuffer(GL_FRAMEBUFFER, dirLightFBO);
+		DrawSceneForDirShadows(dirLightDepthShader, cubeVAO, planeVAO, cubeModelMatrices);
 
 		// 2. рисуем сцену как обычно с тен€ми (использу€ карту глубины)
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
 
 		////////////////////////////////////////Common Scene drawing/////////////////////////////////////////
@@ -636,18 +640,18 @@ int main()
 
 
 		/////////////////////////////////////////////////FRAME BUFFER///////////////////////////////////////////////
-        // render
-        // ------
-        // bind to framebuffer and draw scene as we normally would to color texture 
-		
-        glBindFramebuffer(GL_FRAMEBUFFER, settings.bAntiAliasing? framebufferAA : framebuffer);
+		// render
+		// ------
+		// bind to framebuffer and draw scene as we normally would to color texture 
+
+		glBindFramebuffer(GL_FRAMEBUFFER, settings.bAntiAliasing ? framebufferAA : framebuffer);
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
 			cubeTexture, cubeSpecTexture, floorTexture, cubemapTexture);
 
-        // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+		// now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
 		if (settings.bAntiAliasing)
 		{
 			// 2. now blit multisampled buffer(s) to normal colorbuffer of intermediate FBO. Image is stored in screenTexture
@@ -656,18 +660,18 @@ int main()
 			glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
 		}
-			
+
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-       
+
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		
+
 		DrawReflectCube(shader, cubeVAO, cubemapTexture, cubeTexture, cubeSpecTexture, camera.Position);
 
-		DrawRefractCube(shader, cubeVAO, cubemapTexture, camera.Position);		
-		
+		DrawRefractCube(shader, cubeVAO, cubemapTexture, camera.Position);
+
 
 		//Draw model
-		modelShader.UseProgram();		
+		modelShader.UseProgram();
 		modelShader.SetVec3("cameraPos", camera.Position);
 		modelShader.SetFloat("time", glfwGetTime());
 		modelShader.SetMat4("model", mod);
@@ -700,11 +704,15 @@ int main()
 
 		//////////////////////////////////POST PROCESS EFFECT//////////////////////////
 		postProcShader.UseProgram();
-		postProcShader.SetBool("bUseKernel", settings.bPostProcess);	
+		postProcShader.SetBool("bUseKernel", settings.bPostProcess);
 		postProcShader.SetBool("bAntiAliasing", settings.bAntiAliasing);
 		postProcShader.SetBool("bBlit", settings.bBlit);
-		
-		DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
+
+		if (!settings.bShowDirLightDepthMap)
+			DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
+		//show depth texture
+		else
+			DrawPostProc(postProcShader, postProcVAO, dirLightDepthMapTex, textureColorbufferMS, screenBlitTexture);
 
 
 		//////////////////////////////////////LIGHTS//////////////////////////////////
@@ -714,11 +722,11 @@ int main()
 		if (settings.bSpotLight)
 			UpdateSpotLight();
 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+		// -------------------------------------------------------------------------------
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
 
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
@@ -906,16 +914,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			settings.bShowNormals = false;
 		settings.UpdateSettings();
 	}
-	if (key == GLFW_KEY_P && action == GLFW_PRESS)
-	{
-		settings.bPostProcess = !settings.bPostProcess;
-		if (settings.bPostProcess)
-		{
-			settings.bAntiAliasing = false;
-			settings.bBlit = false;
-		}
-		settings.UpdateSettings();
-	}
+	
 	if (key == GLFW_KEY_1 && action == GLFW_PRESS)
 	{
 		settings.bPointLights = !settings.bPointLights;
@@ -930,14 +929,43 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		//do not using shadows without lights
 		if (!(settings.bPointLights || settings.bDirectionalLight))
 			settings.bShadows = false;
+		//reset influencing settings
+		if (!settings.bDirectionalLight)
+		{
+			settings.bShowDirLightDepthMap = false;
+		}
+
 		settings.UpdateSettings();
 	}
+	
 	if (key == GLFW_KEY_3 && action == GLFW_PRESS)
 	{
 		settings.bSpotLight = !settings.bSpotLight;
 		//do not using shadows without lights
 		if (!(settings.bPointLights || settings.bDirectionalLight))
 			settings.bShadows = false;
+		settings.UpdateSettings();
+	}	
+	if (key == GLFW_KEY_P && action == GLFW_PRESS)
+	{
+		settings.bPostProcess = !settings.bPostProcess;
+		if (settings.bPostProcess)
+		{
+			settings.bAntiAliasing = false;
+			settings.bBlit = false;
+			settings.bShowDirLightDepthMap = false;
+		}
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_U && action == GLFW_PRESS)
+	{
+		settings.bAntiAliasing = !settings.bAntiAliasing;
+		settings.bBlit = settings.bAntiAliasing;
+		if (settings.bAntiAliasing)
+		{			
+			settings.bPostProcess = false;
+			settings.bShowDirLightDepthMap = false;
+		}
 		settings.UpdateSettings();
 	}
 	if (key == GLFW_KEY_O && action == GLFW_PRESS)
@@ -949,15 +977,23 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			settings.UpdateSettings();
 		}
 	}
-	if (key == GLFW_KEY_U && action == GLFW_PRESS)
+	if (key == GLFW_KEY_L && action == GLFW_PRESS)
 	{
-		settings.bAntiAliasing = !settings.bAntiAliasing;
-		settings.bBlit = settings.bAntiAliasing;
-		if (settings.bAntiAliasing)
-		{			
-			settings.bPostProcess = false;
+		//do not using depth map without shadows
+		if (settings.bShadows)
+		{
+			settings.bShowDirLightDepthMap = !settings.bShowDirLightDepthMap;
+			
+			//reset influencing settings
+			if (settings.bShowDirLightDepthMap)
+			{
+				settings.bAntiAliasing = false;
+				settings.bBlit = false;
+				settings.bPostProcess = false;
+			}
+
+			settings.UpdateSettings();
 		}
-		settings.UpdateSettings();
 	}
 }
 
@@ -1840,17 +1876,19 @@ void DrawSceneForDirShadows(Shader & dirLightDepthShader,
 	GLfloat near_plane = 1.0f, far_plane = 7.5f;
 	glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);	
 
+	lights.directionalLight.position = -lights.directionalLight.direction * 5.f;
+
 	glm::mat4 lightView = glm::lookAt(
-		glm::vec3(-lights.directionalLight.direction),	//cam pos
+		glm::vec3(lights.directionalLight.position),	//cam pos
 		glm::vec3(lights.directionalLight.direction),	//cam dir
 		glm::vec3(0.0f, 1.0f, 0.0f));					//up vec
 
 
-	glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+	lights.directionalLight.lightSpaceMatrix = lightProjection * lightView;
 
 	dirLightDepthShader.UseProgram();
 
-	dirLightDepthShader.SetMat4("lightSpaceMatrix", lightSpaceMatrix);
+	dirLightDepthShader.SetMat4("dirLightSpaceMatrix", lights.directionalLight.lightSpaceMatrix);
 
 
 	//Draw cubes
