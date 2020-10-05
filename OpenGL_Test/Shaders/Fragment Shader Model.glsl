@@ -17,7 +17,7 @@ uniform Material material;
 
 struct DirectionalLight {
 	//position for shadows calculations
-	//vec4  position; //uncomment this for behold a super-effect/////////
+	//vec4  position; //uncomment this field for behold a super-effect/////////
     vec4 direction;
 
     vec4 ambient;
@@ -230,7 +230,7 @@ vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCol
 	}
 
 	// calculate shadow
-    float shadow = 0.0;
+    float shadow = DirLightShadowCalculation();
 
     // комбинируем результаты
     vec3 ambient  = vec3(directionalLight.ambient)  * diffuseColor;
