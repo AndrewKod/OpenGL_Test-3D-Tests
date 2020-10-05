@@ -78,6 +78,7 @@ in vec2 TexCoords;
 in vec3 Normal;
 in vec3 Position;
 
+
 uniform bool bStencil = false;
 uniform vec4 borderColor;
 

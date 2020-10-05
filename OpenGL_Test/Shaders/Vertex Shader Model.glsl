@@ -52,7 +52,7 @@ out VS_OUT {
 	vec3 fs_normal;
 	vec3 fs_position;
 
-	vec3 fs_fragPos;
+	vec3 fs_fragPos;	
 
 } vs_out;
 
@@ -72,7 +72,7 @@ void main()
 		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));		
 	}
 	
-	vs_out.fs_fragPos = vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0f));	
+	vs_out.fs_fragPos = vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0f));		
 	
 	gl_Position = projection * view * (bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0);
 	

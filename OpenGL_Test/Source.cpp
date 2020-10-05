@@ -1422,13 +1422,13 @@ void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
 {
 	float planeVertices[] = {
 		// positions			// texture Coords		//norm
-		 50.0f, -0.5f,  50.0f,	2.0f, 0.0f,			0.0f,  1.0f,  0.0f,
+		 50.0f, -0.5f,  50.0f,	20.0f, 0.0f,			0.0f,  1.0f,  0.0f,
 		-50.0f, -0.5f,  50.0f,  0.0f, 0.0f,			0.0f,  1.0f,  0.0f,
-		-50.0f, -0.5f, -50.0f,  0.0f, 2.0f,			0.0f,  1.0f,  0.0f,
+		-50.0f, -0.5f, -50.0f,  0.0f, 20.0f,			0.0f,  1.0f,  0.0f,
 
-		 50.0f, -0.5f,  50.0f,  2.0f, 0.0f,			0.0f,  1.0f,  0.0f,
-		-50.0f, -0.5f, -50.0f,  0.0f, 2.0f,			0.0f,  1.0f,  0.0f,
-		 50.0f, -0.5f, -50.0f,  2.0f, 2.0f,			0.0f,  1.0f,  0.0f
+		 50.0f, -0.5f,  50.0f,  20.0f, 0.0f,			0.0f,  1.0f,  0.0f,
+		-50.0f, -0.5f, -50.0f,  0.0f, 20.0f,			0.0f,  1.0f,  0.0f,
+		 50.0f, -0.5f, -50.0f,  20.0f, 20.0f,			0.0f,  1.0f,  0.0f
 	};
 
 	glGenVertexArrays(1, &planeVAO);
@@ -1755,9 +1755,9 @@ void UpdatePointLights(std::vector<PointLight>& pointLights,
 
 	for (int lightId = 0; lightId < pointLights.size(); lightId++)
 	{
-		GLfloat axisCoef = 1.f / (pointLights.size())* lightId;
+		GLfloat axisCoef = 1.f / (pointLights.size()) * lightId;
 
-		glm::mat4 model;
+		glm::mat4 model(1.0f);
 		//model = glm::rotate(model, ((sin((GLfloat)glfwGetTime()) / 2) + 0.5f)/* * glm::radians(20.0f )*/,
 			//glm::vec3(0.0f, 1.0f, 0.0f));
 		model = glm::rotate(model, ((GLfloat)glfwGetTime() * glm::radians(10.0f*(lightId + 1))),
@@ -1765,10 +1765,12 @@ void UpdatePointLights(std::vector<PointLight>& pointLights,
 
 		glm::vec3 lampPosition = pointLights[lightId].position;
 
+		//rotate lamp position before model's translation and rotation
+		glm::vec4 transLightPos = model * glm::vec4(lampPosition, 1.f);
+
 		model = glm::translate(model, lampPosition);
 		model = glm::scale(model, glm::vec3(0.2f));
-
-		glm::vec4 transLightPos = model * glm::vec4(lampPosition, 1.f);
+		
 
 		//Draw Lamp
 		lampShader.UseProgram();
@@ -1776,7 +1778,8 @@ void UpdatePointLights(std::vector<PointLight>& pointLights,
 		lampShader.SetMat4("model", model);
 		lampShader.SetBool("bStencil", true);
 		glm::vec4 lampColor = glm::vec4(pointLights[lightId].diffuse/*, 1.0*/);
-		lampShader.SetVec4("borderColor", lampColor);
+		lampShader.SetVec4("borderColor", lampColor);		
+
 
 		glBindVertexArray(lampVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
