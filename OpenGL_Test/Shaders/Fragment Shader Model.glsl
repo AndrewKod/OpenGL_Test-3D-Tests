@@ -229,8 +229,11 @@ vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCol
 		spec = pow(max(dot(normal, halfwayDir), 0.0), material.shininess * 2);
 	}
 
+	
+    float shadow = 0.0;
 	// calculate shadow
-    float shadow = DirLightShadowCalculation();
+	if(bShadows)
+		shadow = DirLightShadowCalculation();
 
     // комбинируем результаты
     vec3 ambient  = vec3(directionalLight.ambient)  * diffuseColor;
@@ -330,6 +333,7 @@ float DirLightShadowCalculation()
 
 	// get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
     float closestDepth = texture(dirLight_ShadowMap, projCoords.xy).r; 
+	//float closestDepth = texture(dirLight_ShadowMap, vec2(0.0)).r; 
     // get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
     // check whether current frag pos is in shadow

@@ -253,6 +253,13 @@ struct Lights
 }
 lights;
 
+struct LightSpaceMatrices
+{
+	glm::mat4 dirLightSpaceMatrix;
+	glm::mat4 pointLightSpaceMatrices[NUM_POINT_LIGHTS];
+
+}
+lightSpaceMatrices;
 
 void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO);
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO);
@@ -635,6 +642,9 @@ int main()
 			glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
 			dirLightDepthMapTexID = dirLightDepthMapTex;
+
+			shader.UseProgram();
+			shader.SetMat4("dirLightSpaceMatrix", lightSpaceMatrices.dirLightSpaceMatrix);
 		}
 
 		////////////////////////////////////////Common Scene drawing/////////////////////////////////////////
@@ -713,11 +723,11 @@ int main()
 		postProcShader.SetBool("bAntiAliasing", settings.bAntiAliasing);
 		postProcShader.SetBool("bBlit", settings.bBlit);
 
-		if (!settings.bShowDirLightDepthMap)
-			DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
 		//show depth texture
+		if (settings.bShadows && settings.bDirectionalLight && settings.bShowDirLightDepthMap)
+			DrawPostProc(postProcShader, postProcVAO, dirLightDepthMapTex, textureColorbufferMS, screenBlitTexture);		
 		else
-			DrawPostProc(postProcShader, postProcVAO, dirLightDepthMapTex, textureColorbufferMS, screenBlitTexture);
+			DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
 
 
 		//////////////////////////////////////LIGHTS//////////////////////////////////
@@ -928,6 +938,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		//do not using shadows without lights
 		if (!(settings.bPointLights || settings.bDirectionalLight))
 			settings.bShadows = false;
+		//reset influencing settings
+		if (!settings.bDirectionalLight)
+		{
+			settings.bShowDirLightDepthMap = false;
+		}
 		settings.UpdateSettings();
 	}
 	if (key == GLFW_KEY_2 && action == GLFW_PRESS)
@@ -1130,7 +1145,7 @@ void DrawCubes(Shader & shader, GLuint VAO, const std::vector<glm::mat4>& cubeMo
 		glActiveTexture(GL_TEXTURE0 + texCount);
 		glBindTexture(GL_TEXTURE_2D, dirLightDepthMapTex);
 		shader.SetInt("dirLight_ShadowMap", texCount);
-		texCount++;
+		texCount++;		
 	}
 
 	for (int i = 0; i < cubeModelMatrices.size(); i++)
@@ -1175,7 +1190,7 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTextu
 		glActiveTexture(GL_TEXTURE0 + texCount);
 		glBindTexture(GL_TEXTURE_2D, dirLightDepthMapTex);
 		shader.SetInt("dirLight_ShadowMap", texCount);
-		texCount++;
+		texCount++;		
 	}
 
 	shader.SetMat4("model", glm::mat4(1.0f));
@@ -1378,9 +1393,9 @@ void DrawReflectCube(Shader & shader, GLuint VAO,
 	shader.SetInt("material.specular[0]", 1);
 
 	//glEnable(GL_TEXTURE_CUBE_MAP);
-	glActiveTexture(GL_TEXTURE2);
+	glActiveTexture(GL_TEXTURE10);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapTexture);
-	shader.SetInt("skybox", 2);
+	shader.SetInt("skybox", 10);
 	
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(2.0f, 5.0f, 0.0f));	
@@ -1405,9 +1420,9 @@ void DrawRefractCube(Shader & shader, GLuint VAO, GLuint cubeMapTexture, glm::ve
 	glBindVertexArray(VAO);	
 
 	//glEnable(GL_TEXTURE_CUBE_MAP);
-	glActiveTexture(GL_TEXTURE2);
+	glActiveTexture(GL_TEXTURE10);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapTexture);
-	shader.SetInt("skybox", 2);
+	shader.SetInt("skybox", 10);
 
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(0.0f, 5.0f, 0.0f));
@@ -1917,11 +1932,11 @@ void DrawSceneForDirShadows(Shader & dirLightDepthShader,
 		glm::vec3(0.0f, 1.0f, 0.0f));					//up vec
 
 
-	glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+	lightSpaceMatrices.dirLightSpaceMatrix = lightProjection * lightView;
 
 	dirLightDepthShader.UseProgram();
 
-	dirLightDepthShader.SetMat4("dirLightSpaceMatrix", lightSpaceMatrix);
+	dirLightDepthShader.SetMat4("dirLightSpaceMatrix", lightSpaceMatrices.dirLightSpaceMatrix);
 
 
 	//Draw cubes
