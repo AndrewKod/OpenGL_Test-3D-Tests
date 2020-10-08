@@ -350,12 +350,11 @@ float DirLightShadowCalculation(vec3 normal, vec3 lightDir)
 			for(int y = -1; y <= 1; ++y)
 			{
 				float pcfDepth = texture(dirLight_ShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
-				shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+				shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;
 			}
 		}
 		shadow /= 9.0;
 	}
-	
 
     return shadow;
 }

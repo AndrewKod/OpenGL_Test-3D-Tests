@@ -635,9 +635,9 @@ int main()
 			//Scene drawing for shadows
 			glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
 			glBindFramebuffer(GL_FRAMEBUFFER, dirLightFBO);
-			//glCullFace(GL_FRONT);
+			glCullFace(GL_BACK);
 			DrawSceneForDirShadows(dirLightDepthShader, cubeVAO, planeVAO, cubeModelMatrices);
-			//glCullFace(GL_BACK);
+			glCullFace(GL_FRONT);
 
 			// 2. рисуем сцену как обычно с тен€ми (использу€ карту глубины)
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
