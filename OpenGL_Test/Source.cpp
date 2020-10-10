@@ -1166,6 +1166,8 @@ void DrawCubes(Shader & shader, GLuint VAO, const std::vector<glm::mat4>& cubeMo
 
 void DrawFloor(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTexture, GLuint dirLightDepthMapTex)
 {
+	//glDisable(GL_CULL_FACE);
+
 	shader.UseProgram();
 
 	glBindVertexArray(VAO);
@@ -1199,6 +1201,8 @@ void DrawFloor(Shader & shader, GLuint VAO, GLuint diffTexture, GLuint specTextu
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glBindVertexArray(0);
+
+	//glEnable(GL_CULL_FACE);
 }
 
 void SetKernelValue(Shader & postProcShader, GLint cellID)
