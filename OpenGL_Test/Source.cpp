@@ -189,10 +189,10 @@ struct PointLight
 	glm::vec4 specular;
 
 	//light fading
-	float constant;
-	float linear;
-	float quadratic;	
-
+	GLfloat constant;
+	GLfloat linear;
+	GLfloat quadratic;
+	
 	GLint bEnabled;
 
 	PointLight(){}
@@ -253,13 +253,7 @@ struct Lights
 }
 lights;
 
-struct LightSpaceMatrices
-{
-	glm::mat4 dirLightSpaceMatrix;
-	glm::mat4 pointLightSpaceMatrices[NUM_POINT_LIGHTS];
 
-}
-lightSpaceMatrices;
 
 void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO);
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO);
@@ -314,12 +308,30 @@ void UpdatePointLights(std::vector<PointLight>& pointLights,
 	Shader& lampShader, GLuint lampVAO);
 
 
+//////////////////////////////////////////SHADOWS//////////////////////////////////////////
+
+//////////////////////////////DIRECTED LIGHT SHADOWS///////////////////////////
 const GLuint DIR_SHADOW_WIDTH = 1024, DIR_SHADOW_HEIGHT = 1024;
 
-void SetupDirLightFBO(GLuint& dirLightFBO, GLuint& colorBuffer, GLuint& renderBuffer);
+void SetupDirLightFBO(GLuint& dirLightFBO, GLuint& dirLightDepthMapTex);
 
 void DrawSceneForDirShadows(Shader & dirLightDepthShader, 
 	GLuint cubeVAO, GLuint planeVAO, const std::vector<glm::mat4>& cubeModelMatrices);
+
+///////////////////////////////PIONT LIGHTS SHADOWS////////////////////////////
+const GLuint POINT_SHADOW_WIDTH = 1024, POINT_SHADOW_HEIGHT = 1024;
+const GLuint CUBE_FACES = 6;
+
+void SetupPointLightsFBOs(std::vector<GLuint>& pointLightFBOs, std::vector<GLuint>& pointLightDepthCubemaps,
+	GLuint buffersNum);
+
+struct LightSpaceMatrices
+{
+	glm::mat4 dirLightSpaceMatrix;
+	std::vector<glm::mat4[CUBE_FACES]> pointLightSpaceMatrices;
+
+}
+lightSpaceMatrices;
 
 int main()
 {
@@ -602,11 +614,22 @@ int main()
 	//Depth map for directional light
 	GLuint dirLightFBO;
 	GLuint dirLightDepthMapTex;//Depth map texture
-	SetupDirLightFBO(dirLightFBO, dirLightDepthMapTex, renderBuffer);
+	SetupDirLightFBO(dirLightFBO, dirLightDepthMapTex);
+
+	
+	GLuint pointLightsNum = pointLights.size();
+	//depth maps for point lights
+	std::vector<GLuint> pointLightFBOs;
+	std::vector<GLuint> pointLightDepthCubemaps;
+
+	SetupPointLightsFBOs(pointLightFBOs, pointLightDepthCubemaps, pointLightsNum);
 
 
+
+	/////////////model matrices for cubes drawing/////////////////
 	std::vector<glm::mat4> cubeModelMatrices;
 	FillModelMatrices(cubeModelMatrices);
+
 
 	//after installing new OS appears screen clipping
 	//which disappears after changing window size
@@ -1899,7 +1922,7 @@ GLsizeiptr CalcStructSizeUBO(GLsizeiptr structSize)
 	return structSize;
 }
 
-void SetupDirLightFBO(GLuint& dirLightFBO, GLuint& dirLightDepthMapTex, GLuint& renderBuffer)
+void SetupDirLightFBO(GLuint& dirLightFBO, GLuint& dirLightDepthMapTex)
 {
 	glGenFramebuffers(1, &dirLightFBO);
 
@@ -1976,4 +1999,37 @@ void FillModelMatrices(std::vector<glm::mat4>& cubeModelMatrices)
 	model = glm::scale(model, glm::vec3(1.3f));
 	cubeModelMatrices.push_back(model);
 	
+}
+
+
+void SetupPointLightsFBOs(std::vector<GLuint>& pointLightFBOs, std::vector<GLuint>& pointLightDepthCubemaps,
+	GLuint buffersNum)
+{
+	for (GLuint i = 0; i < buffersNum; i++)
+	{
+		pointLightFBOs.push_back(0);
+		pointLightDepthCubemaps.push_back(0);
+
+
+		glGenFramebuffers(1, &pointLightFBOs[i]);
+
+		glGenTextures(1, &pointLightDepthCubemaps[i]);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, pointLightDepthCubemaps[i]);
+
+		for (unsigned int j = 0; j < CUBE_FACES; ++j)
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, 0, GL_DEPTH_COMPONENT,
+				POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBOs[i]);
+		glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, pointLightDepthCubemaps[i], 0);
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
 }
