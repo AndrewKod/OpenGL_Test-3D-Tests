@@ -325,6 +325,10 @@ const GLuint CUBE_FACES = 6;
 void SetupPointLightsFBOs(std::vector<GLuint>& pointLightFBOs, std::vector<GLuint>& pointLightDepthCubemaps,
 	GLuint buffersNum);
 
+void DrawSceneForPointShadows(Shader & pointLightDepthShader, const glm::mat4& pointShadowProj,
+	GLuint pointLightsNum,
+	GLuint cubeVAO, GLuint planeVAO, const std::vector<glm::mat4>& cubeModelMatrices);
+
 struct LightSpaceMatrices
 {
 	glm::mat4 dirLightSpaceMatrix;
@@ -624,7 +628,10 @@ int main()
 
 	SetupPointLightsFBOs(pointLightFBOs, pointLightDepthCubemaps, pointLightsNum);
 
-
+	float aspect = (float)POINT_SHADOW_WIDTH / (float)POINT_SHADOW_HEIGHT;
+	float nearPlane = 1.0f;
+	float farPlane = 25.0f;
+	glm::mat4 pointShadowProj = glm::perspective(glm::radians(90.0f), aspect, nearPlane, farPlane);
 
 	/////////////model matrices for cubes drawing/////////////////
 	std::vector<glm::mat4> cubeModelMatrices;
@@ -667,6 +674,23 @@ int main()
 			glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
 			dirLightDepthMapTexID = dirLightDepthMapTex;
+
+			shader.UseProgram();
+			shader.SetMat4("dirLightSpaceMatrix", lightSpaceMatrices.dirLightSpaceMatrix);
+		}
+
+		if (settings.bShadows && settings.bPointLights)
+		{
+			//Scene drawing for shadows
+			glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
+			glBindFramebuffer(GL_FRAMEBUFFER, dirLightFBO);
+			glCullFace(GL_BACK);
+			DrawSceneForDirShadows(dirLightDepthShader, cubeVAO, planeVAO, cubeModelMatrices);
+			glCullFace(GL_FRONT);
+
+			// 2. рисуем сцену как обычно с тен€ми (использу€ карту глубины)
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);			
 
 			shader.UseProgram();
 			shader.SetMat4("dirLightSpaceMatrix", lightSpaceMatrices.dirLightSpaceMatrix);
@@ -2032,4 +2056,37 @@ void SetupPointLightsFBOs(std::vector<GLuint>& pointLightFBOs, std::vector<GLuin
 		glReadBuffer(GL_NONE);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
+}
+
+void DrawSceneForPointShadows(Shader & pointLightDepthShader, const glm::mat4& pointShadowProj,
+	GLuint pointLightsNum, 
+	GLuint cubeVAO, GLuint planeVAO, const std::vector<glm::mat4>& cubeModelMatrices)
+{
+	for (GLuint i = 0; i < pointLightsNum; i++)
+	{
+		glm::mat4 matrices[CUBE_FACES];
+		lightSpaceMatrices.pointLightSpaceMatrices.push_back(matrices);
+
+		glm::vec3 lightPos = glm::vec3(lights.pointLights[i].position);
+
+		lightSpaceMatrices.pointLightSpaceMatrices[i][0] = (pointShadowProj *
+			glm::lookAt(lightPos, lightPos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+
+		lightSpaceMatrices.pointLightSpaceMatrices[i][1] = (pointShadowProj *
+			glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+
+		lightSpaceMatrices.pointLightSpaceMatrices[i][2] = (pointShadowProj *
+			glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+
+		lightSpaceMatrices.pointLightSpaceMatrices[i][3] = (pointShadowProj *
+			glm::lookAt(lightPos, lightPos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+
+		lightSpaceMatrices.pointLightSpaceMatrices[i][4] = (pointShadowProj *
+			glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+
+		lightSpaceMatrices.pointLightSpaceMatrices[i][5] = (pointShadowProj *
+			glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+
+	}
+
 }
