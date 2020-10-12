@@ -325,8 +325,8 @@ const GLuint CUBE_FACES = 6;
 void SetupPointLightsFBOs(std::vector<GLuint>& pointLightFBOs, std::vector<GLuint>& pointLightDepthCubemaps,
 	GLuint buffersNum);
 
-void DrawSceneForPointShadows(Shader & pointLightDepthShader, const glm::mat4& pointShadowProj,
-	GLuint pointLightsNum,
+void DrawSceneForPointShadows(Shader & pointLightDepthShader, const std::vector<GLuint>& pointLightFBOs,
+	const glm::mat4& pointShadowProj, GLuint pointLightsNum,
 	GLuint cubeVAO, GLuint planeVAO, const std::vector<glm::mat4>& cubeModelMatrices);
 
 struct LightSpaceMatrices
@@ -2058,8 +2058,8 @@ void SetupPointLightsFBOs(std::vector<GLuint>& pointLightFBOs, std::vector<GLuin
 	}
 }
 
-void DrawSceneForPointShadows(Shader & pointLightDepthShader, const glm::mat4& pointShadowProj,
-	GLuint pointLightsNum, 
+void DrawSceneForPointShadows(Shader & pointLightDepthShader,
+	const std::vector<GLuint>& pointLightFBOs, const glm::mat4& pointShadowProj, GLuint pointLightsNum,
 	GLuint cubeVAO, GLuint planeVAO, const std::vector<glm::mat4>& cubeModelMatrices)
 {
 	for (GLuint i = 0; i < pointLightsNum; i++)
