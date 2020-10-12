@@ -68,6 +68,15 @@
     <None Include="Shaders\Dir Light Depth VS.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\Point Light Depth VS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Point Light Depth GS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Point Light Depth FS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">

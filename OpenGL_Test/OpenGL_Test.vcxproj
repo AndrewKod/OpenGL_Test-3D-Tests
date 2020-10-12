@@ -146,6 +146,9 @@
     <None Include="Shaders\Fragment Shader.glsl" />
     <None Include="Shaders\Geometry Shader Model Normals.glsl" />
     <None Include="Shaders\Geometry Shader Model.glsl" />
+    <None Include="Shaders\Point Light Depth FS.glsl" />
+    <None Include="Shaders\Point Light Depth GS.glsl" />
+    <None Include="Shaders\Point Light Depth VS.glsl" />
     <None Include="Shaders\Single Color Shader.glsl" />
     <None Include="Shaders\Vertex Shader Model.glsl" />
     <None Include="Shaders\Vertex Shader PP.glsl" />

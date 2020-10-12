@@ -411,6 +411,9 @@ int main()
 		"Shaders/Geometry Shader Model Normals.glsl");
 
 	Shader dirLightDepthShader("Shaders/Dir Light Depth VS.glsl", "Shaders/Dir Light Depth FS.glsl");
+
+	Shader pointLightDepthShader("Shaders/Point Light Depth VS.glsl", "Shaders/Point Light Depth FS.glsl",
+		"Shaders/Point Light Depth GS.glsl");
 	
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
