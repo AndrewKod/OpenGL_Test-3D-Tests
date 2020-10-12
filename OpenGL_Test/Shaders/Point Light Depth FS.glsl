@@ -6,12 +6,11 @@ uniform float far_plane;
 
 void main()
 {
-    // вычисление расстояния между фрагментом и источником 
+    //distance between fragment and light source 
     float lightDistance = length(FragPos.xyz - lightPos);
     
-    // преобразование к интервалу [0, 1] посредством деления на far_plane
+	//transfer to [0, 1] range by division by far_plane
     lightDistance = lightDistance / far_plane;
     
-    // запись результата в результирующую глубину фрагмента
     gl_FragDepth = lightDistance;
 }  
