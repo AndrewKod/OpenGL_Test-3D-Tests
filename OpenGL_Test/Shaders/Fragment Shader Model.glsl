@@ -129,7 +129,8 @@ in vec4 FragPosDirLightSpace;
 float DirLightShadowCalculation(vec3 normal, vec3 lightDir);
 
 //point lights shadows
-uniform samplerCube pointLight_ShadowMap;
+uniform samplerCube pointLight_ShadowMaps[NUM_POINT_LIGHTS];
+
 uniform float far_plane;
 
 float PointLightShadowCalculation(vec3 normal, vec3 lightDir, int lightId);
@@ -380,7 +381,7 @@ float PointLightShadowCalculation(vec3 normal, vec3 lightDir, int lightId)
 	vec3 fragToLight = FragPos - vec3(pointLights[lightId].position);    
 
 	//calculated vector is using for cubemap sampling
-    float closestDepth = texture(pointLight_ShadowMap, fragToLight).r;
+    float closestDepth = texture(pointLight_ShadowMaps[lightId], fragToLight).r;
     //transfer linear depth value from [0, 1] range into [0, far_plane] (origin range)
     closestDepth *= far_plane;
 	//get linear depth for current fragment as distance from fragment to light position

@@ -100,10 +100,15 @@ public:
 		//Bind skybox cubemap
 		if (this->skyboxID != 0)
 		{//glEnable(GL_TEXTURE_CUBE_MAP);
-			glActiveTexture(GL_TEXTURE0 + textures.size());
+			/*glActiveTexture(GL_TEXTURE0 + textures.size());
 			glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxID);
 
-			shader.SetInt("skybox", textures.size());
+			shader.SetInt("skybox", textures.size());*/
+
+			glActiveTexture(GL_TEXTURE31);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxID);
+
+			shader.SetInt("skybox", 31);
 		}
 		
 

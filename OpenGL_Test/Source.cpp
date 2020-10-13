@@ -405,8 +405,14 @@ int main()
     // build and compile shaders
     // -------------------------
 	
+	//////////////////////////////////WARNING!!!/////////////////////////////////////
+	//we have to set texture blocks for ALL samplerCubes in shaders even without textures or 
+	//even it won't be used in shader further
+	//////////////////////////////////WARNING!!!/////////////////////////////////////
+
     Shader shader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
 		"Shaders/Geometry Shader Model.glsl");
+	shader.SetSamplerCubesBlocks();
 
     Shader postProcShader("Shaders/Vertex Shader PP.glsl", "Shaders/Fragment Shader PP.glsl");
 	Shader skyboxShader("Shaders/Cubemap Vertex Shader.glsl", "Shaders/Cubemap Fragment Shader.glsl");
@@ -747,7 +753,7 @@ int main()
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+		
 		DrawReflectCube(shader, cubeVAO, cubemapTexture, cubeTexture, cubeSpecTexture, camera.Position);
 
 		DrawRefractCube(shader, cubeVAO, cubemapTexture, camera.Position);
@@ -1227,16 +1233,18 @@ void DrawCubes(Shader & shader, GLuint VAO,
 
 	if (pointLightDepthCubemaps != nullptr)
 	{
+		GLuint depthTexCount = 0;
 		for (int i = 0; i < (*pointLightDepthCubemaps).size(); i++)
 		{
-			glActiveTexture(GL_TEXTURE0 + texCount);
+			GLuint blockID = 15 + depthTexCount;
+			glActiveTexture(GL_TEXTURE0 + blockID);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, (*pointLightDepthCubemaps)[i]);
-			char num[2];
+			char num[3];
 			_itoa_s(i, num, 10);
 
-			shader.SetInt(std::string("pointLight_ShadowMap"), texCount);
+			shader.SetInt(std::string("pointLight_ShadowMap"), blockID);
 
-			texCount++;
+			depthTexCount++;
 		}
 	}
 
@@ -1291,15 +1299,18 @@ void DrawFloor(Shader & shader, GLuint VAO,
 
 	if (pointLightDepthCubemaps != nullptr)
 	{
+		GLuint depthTexCount = 0;
 		for (int i = 0; i < (*pointLightDepthCubemaps).size(); i++)
 		{
-			glActiveTexture(GL_TEXTURE0 + texCount);
+			GLuint blockID = 15 + depthTexCount;
+			glActiveTexture(GL_TEXTURE0 + blockID);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, (*pointLightDepthCubemaps)[i]);
-			char num[2];
+			char num[3];
 			_itoa_s(i, num, 10);
 
-			shader.SetInt(std::string("pointLight_ShadowMap"), texCount);
-			texCount++;
+			shader.SetInt(std::string("pointLight_ShadowMap"), blockID);
+
+			depthTexCount++;
 		}
 	}
 
@@ -1313,7 +1324,7 @@ void DrawFloor(Shader & shader, GLuint VAO,
 
 void SetKernelValue(Shader & postProcShader, GLint cellID)
 {
-	char num[2];
+	char num[3];
 	_itoa_s(cellID, num, 10);
 
 	postProcShader.SetFloat(std::string("kernel[") + num + string("]"), kernel[cellID]);
@@ -2028,6 +2039,13 @@ void SetupDirLightFBO(GLuint& dirLightFBO, GLuint& dirLightDepthMapTex)
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, dirLightDepthMapTex, 0);
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
+
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		cout << "ERROR::FRAMEBUFFER::DirLightFBO" << Status << endl;
+	}
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
@@ -2116,6 +2134,16 @@ void SetupPointLightsFBOs(std::vector<GLuint>& pointLightFBOs, std::vector<GLuin
 		glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, pointLightDepthCubemaps[i], 0);
 		glDrawBuffer(GL_NONE);
 		glReadBuffer(GL_NONE);
+
+		GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+		char num[3];
+		_itoa_s(i, num, 10);
+
+		if (Status != GL_FRAMEBUFFER_COMPLETE) {
+			cout << "ERROR::FRAMEBUFFER::PointLightFBO["<< num << "]" << Status << endl;
+		}
+
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 }
@@ -2128,7 +2156,7 @@ void SetShaderValues(Shader & pointLightDepthShader, GLuint pointLightID)
 
 	for (GLuint i = 0; i < CUBE_FACES; i++)
 	{
-		char num[2];
+		char num[3];
 		_itoa_s(i, num, 10);
 		
 		//set matrices

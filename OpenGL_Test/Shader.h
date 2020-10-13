@@ -99,6 +99,8 @@ public:
 		if (geometryPath != nullptr)
 			glDeleteShader(geometry);
 
+		//SetSamplerCubesBlocks();
+
 	}
 	// activate the shader
 	// ------------------------------------------------------------------------
@@ -115,7 +117,8 @@ public:
 	// ------------------------------------------------------------------------
 	void SetInt(const std::string &name, int value) const
 	{
-		glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
+		GLint loc = glGetUniformLocation(ID, name.c_str());
+		glUniform1i(loc, value);
 	}
 	// ------------------------------------------------------------------------
 	void SetFloat(const std::string &name, float value) const
@@ -197,6 +200,45 @@ private:
 				std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
 			}
 		}
+	}
+
+
+public:
+
+	void SetSamplerCubesBlocks()
+	{
+		GLint maxSampleID = 31;
+
+		GLint count;
+
+		GLint size; // size of the variable
+		GLenum type; // type of the variable (float, vec3 or mat4, etc)
+
+		const GLsizei bufSize = 100; // maximum name length
+		GLchar name[bufSize]; // variable name in GLSL
+		GLsizei length; // name length
+		
+		/*glGetProgramiv(ID, GL_ACTIVE_ATTRIBUTES, &count);
+		printf("Active Attributes: %d\n", count);
+
+		for (GLuint i = 0; i < count; i++)
+		{
+			glGetActiveAttrib(ID, (GLuint)i, bufSize, &length, &size, &type, name);
+
+			printf("Attribute #%d Type: %u Name: %s\n", i, type, name);
+		}*/
+
+		glGetProgramiv(ID, GL_ACTIVE_UNIFORMS, &count);
+		printf("Active Uniforms: %d\n", count);
+
+		for (GLuint i = 0; i < count; i++)
+		{
+			glGetActiveUniform(ID, i, bufSize, &length, &size, &type, name);
+
+			printf("Uniform #%d Type: %u Name: %s\n", i, type, name);
+		}
+
+		
 	}
 };
 #endif
