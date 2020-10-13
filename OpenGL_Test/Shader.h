@@ -207,7 +207,8 @@ public:
 
 	void SetSamplerCubesBlocks()
 	{
-		GLint maxSampleID = 31;
+		//binding samplerCubes blocks from end block
+		GLint sampleCubeID = 31;
 
 		GLint count;
 
@@ -227,6 +228,7 @@ public:
 
 			printf("Attribute #%d Type: %u Name: %s\n", i, type, name);
 		}*/
+		GLuint samplerCubeCount = 0;
 
 		glGetProgramiv(ID, GL_ACTIVE_UNIFORMS, &count);
 		printf("Active Uniforms: %d\n", count);
@@ -236,6 +238,30 @@ public:
 			glGetActiveUniform(ID, i, bufSize, &length, &size, &type, name);
 
 			printf("Uniform #%d Type: %u Name: %s\n", i, type, name);
+
+			 
+
+			if (type == 35680)//samplerCube
+			{
+				std::string nameStr(name);
+				GLint subStrPos = nameStr.find("[0]");
+				if (subStrPos == std::string::npos)//not array
+				{
+					this->SetInt(name, sampleCubeID);
+					sampleCubeID--;
+				}
+				else
+				{
+					GLuint arrID = 0;
+					char num[3];
+					_itoa_s(arrID, num, 10);
+					nameStr = nameStr.substr(0, subStrPos + 1);
+					nameStr += std::string(num) += "]";
+					this->SetInt(name, sampleCubeID);
+					sampleCubeID--;
+					arrID++;
+				}
+			}
 		}
 
 		
