@@ -408,11 +408,12 @@ int main()
 	//////////////////////////////////WARNING!!!/////////////////////////////////////
 	//we have to set texture blocks for ALL samplerCubes in shaders even without textures or 
 	//even it won't be used in shader further
+	//I did it in Shader class in method SetSamplerCubesBlocks()
 	//////////////////////////////////WARNING!!!/////////////////////////////////////
 
     Shader shader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
 		"Shaders/Geometry Shader Model.glsl");
-	shader.SetSamplerCubesBlocks();
+	//shader.SetSamplerCubesBlocks();
 
     Shader postProcShader("Shaders/Vertex Shader PP.glsl", "Shaders/Fragment Shader PP.glsl");
 	Shader skyboxShader("Shaders/Cubemap Vertex Shader.glsl", "Shaders/Cubemap Fragment Shader.glsl");
@@ -644,7 +645,7 @@ int main()
 	SetupPointLightsFBOs(pointLightFBOs, pointLightDepthCubemaps, pointLightsNum);
 
 	float aspect = (float)POINT_SHADOW_WIDTH / (float)POINT_SHADOW_HEIGHT;
-	float nearPlane = 1.0f;
+	float nearPlane = 0.0f;
 	float farPlane = 25.0f;
 	glm::mat4 pointShadowProj = glm::perspective(glm::radians(90.0f), aspect, nearPlane, farPlane);
 
@@ -1233,18 +1234,16 @@ void DrawCubes(Shader & shader, GLuint VAO,
 
 	if (pointLightDepthCubemaps != nullptr)
 	{
-		GLuint depthTexCount = 0;
 		for (int i = 0; i < (*pointLightDepthCubemaps).size(); i++)
 		{
-			GLuint blockID = 15 + depthTexCount;
-			glActiveTexture(GL_TEXTURE0 + blockID);
+			glActiveTexture(GL_TEXTURE0 + texCount);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, (*pointLightDepthCubemaps)[i]);
 			char num[3];
 			_itoa_s(i, num, 10);
 
-			shader.SetInt(std::string("pointLight_ShadowMap"), blockID);
+			shader.SetInt(std::string("pointLight_ShadowMaps[") + num + "]", texCount);
 
-			depthTexCount++;
+			texCount++;
 		}
 	}
 
@@ -1299,18 +1298,16 @@ void DrawFloor(Shader & shader, GLuint VAO,
 
 	if (pointLightDepthCubemaps != nullptr)
 	{
-		GLuint depthTexCount = 0;
 		for (int i = 0; i < (*pointLightDepthCubemaps).size(); i++)
 		{
-			GLuint blockID = 15 + depthTexCount;
-			glActiveTexture(GL_TEXTURE0 + blockID);
+			glActiveTexture(GL_TEXTURE0 + texCount);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, (*pointLightDepthCubemaps)[i]);
 			char num[3];
 			_itoa_s(i, num, 10);
 
-			shader.SetInt(std::string("pointLight_ShadowMap"), blockID);
+			shader.SetInt(std::string("pointLight_ShadowMaps[") + num + "]", texCount);
 
-			depthTexCount++;
+			texCount++;
 		}
 	}
 
@@ -1913,7 +1910,7 @@ void AddPointLights(std::vector<PointLight>& pointLights)
 			glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
 			glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
 			glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
-	/*pointLights.push_back(
+	pointLights.push_back(
 		PointLight(
 			glm::vec4(2.3f, -2.3f, -2.0f, 0.0f),
 			glm::vec4(0.1f, 0.0f, 0.0f, 1.0f),
@@ -1930,7 +1927,7 @@ void AddPointLights(std::vector<PointLight>& pointLights)
 			glm::vec4(0.0f, 0.0f, -2.0f, 0.0f),
 			glm::vec4(0.0f, 0.0f, 0.1f, 1.0f),
 			glm::vec4(0.0f, 0.0f, 1.0f, 1.0f),
-			glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)));*/
+			glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)));
 
 	for (GLint i = 0; i < pointLights.size(); i++)
 	{

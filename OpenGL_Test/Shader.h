@@ -99,7 +99,7 @@ public:
 		if (geometryPath != nullptr)
 			glDeleteShader(geometry);
 
-		//SetSamplerCubesBlocks();
+		SetSamplerCubesBlocks();
 
 	}
 	// activate the shader
@@ -207,6 +207,8 @@ public:
 
 	void SetSamplerCubesBlocks()
 	{
+		this->UseProgram();
+
 		//binding samplerCubes blocks from end block
 		GLint sampleCubeID = 31;
 
@@ -247,19 +249,27 @@ public:
 				GLint subStrPos = nameStr.find("[0]");
 				if (subStrPos == std::string::npos)//not array
 				{
+					
 					this->SetInt(name, sampleCubeID);
 					sampleCubeID--;
 				}
 				else
 				{
 					GLuint arrID = 0;
-					char num[3];
-					_itoa_s(arrID, num, 10);
-					nameStr = nameStr.substr(0, subStrPos + 1);
-					nameStr += std::string(num) += "]";
-					this->SetInt(name, sampleCubeID);
-					sampleCubeID--;
-					arrID++;
+
+					do 
+					{						
+						char num[3];
+						_itoa_s(arrID, num, 10);
+						nameStr = nameStr.substr(0, subStrPos + 1);
+						nameStr += std::string(num) += "]";
+						GLint loc = glGetUniformLocation(ID, nameStr.c_str());
+						if (loc == -1)
+							break;
+						this->SetInt(nameStr, sampleCubeID);
+						sampleCubeID--;
+						arrID++;
+					} while (true);
 				}
 			}
 		}
