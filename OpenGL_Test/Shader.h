@@ -210,7 +210,7 @@ public:
 		this->UseProgram();
 
 		//binding samplerCubes blocks from end block
-		GLint sampleCubeID = 31;
+		//GLint sampleCubeID = 31;
 
 		GLint count;
 
@@ -221,16 +221,6 @@ public:
 		GLchar name[bufSize]; // variable name in GLSL
 		GLsizei length; // name length
 		
-		/*glGetProgramiv(ID, GL_ACTIVE_ATTRIBUTES, &count);
-		printf("Active Attributes: %d\n", count);
-
-		for (GLuint i = 0; i < count; i++)
-		{
-			glGetActiveAttrib(ID, (GLuint)i, bufSize, &length, &size, &type, name);
-
-			printf("Attribute #%d Type: %u Name: %s\n", i, type, name);
-		}*/
-		GLuint samplerCubeCount = 0;
 
 		glGetProgramiv(ID, GL_ACTIVE_UNIFORMS, &count);
 		printf("Active Uniforms: %d\n", count);
@@ -248,11 +238,11 @@ public:
 				std::string nameStr(name);
 				GLint subStrPos = nameStr.find("[0]");
 				if (subStrPos == std::string::npos)//not array
-				{
-					
-					this->SetInt(name, sampleCubeID);
-					sampleCubeID--;
+				{					
+					this->SetInt(name, 31);
+					//sampleCubeID--;
 				}
+				//array of sampleCube
 				else
 				{
 					GLuint arrID = 0;
@@ -266,8 +256,8 @@ public:
 						GLint loc = glGetUniformLocation(ID, nameStr.c_str());
 						if (loc == -1)
 							break;
-						this->SetInt(nameStr, sampleCubeID);
-						sampleCubeID--;
+						this->SetInt(nameStr, 31);
+						//sampleCubeID--;
 						arrID++;
 					} while (true);
 				}

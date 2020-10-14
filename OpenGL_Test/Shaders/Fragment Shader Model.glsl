@@ -135,6 +135,15 @@ uniform float far_plane;
 
 float PointLightShadowCalculation(vec3 normal, vec3 lightDir, int lightId);
 
+vec3 sampleOffsetDirections[20] = vec3[]
+(
+   vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1), 
+   vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
+   vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
+   vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
+   vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
+);   
+
 
 
 void main()
@@ -369,7 +378,7 @@ float DirLightShadowCalculation(vec3 normal, vec3 lightDir)
 				shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;
 			}
 		}
-		shadow /= 9.0;
+		shadow /= 9.0;		
 	}
 
     return shadow;
@@ -387,8 +396,23 @@ float PointLightShadowCalculation(vec3 normal, vec3 lightDir, int lightId)
 	//get linear depth for current fragment as distance from fragment to light position
     float currentDepth = length(fragToLight);
 	
-	float bias = 0.05; 
-    float shadow = currentDepth -  bias > closestDepth ? 1.0 : 0.0;
+	float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+
+	float shadow = 0.0;
+
+	int samples  = 20;
+	float viewDistance = length(cameraPos - FragPos);
+	float diskRadius = (1.0 + (viewDistance / far_plane)) / 25.0;  
+	for(int i = 0; i < samples; ++i)
+	{
+		float closestDepth = texture(pointLight_ShadowMaps[lightId], fragToLight + sampleOffsetDirections[i] * diskRadius).r;
+		closestDepth *= far_plane;   // обратное преобразование из диапазона [0;1]
+		if(currentDepth - bias > closestDepth)
+			shadow += 1.0;
+	}
+	shadow /= float(samples);
+
+    //float shadow = currentDepth -  bias > closestDepth ? 1.0 : 0.0;
 
     return shadow;
 }

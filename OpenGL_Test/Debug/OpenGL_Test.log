@@ -1,6 +1,6 @@
 ﻿  Source.cpp
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\shader.h(60): warning C4101: 'e': unreferenced local variable
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\shader.h(238): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\shader.h(228): warning C4018: '<': signed/unsigned mismatch
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(44): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(45): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(676): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
