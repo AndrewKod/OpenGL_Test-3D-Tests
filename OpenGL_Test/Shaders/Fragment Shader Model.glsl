@@ -8,6 +8,7 @@ struct Material {
     sampler2D specular[NUM_TEXTURE_MAPS];
 	sampler2D emissive[NUM_TEXTURE_MAPS];
 	sampler2D reflection[NUM_TEXTURE_MAPS];
+	sampler2D normal[NUM_TEXTURE_MAPS];
     float shininess;
 }; 
   
