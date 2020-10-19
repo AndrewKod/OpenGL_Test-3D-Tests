@@ -9,7 +9,7 @@ struct Material {
     sampler2D specular[NUM_TEXTURE_MAPS];
 	sampler2D emissive[NUM_TEXTURE_MAPS];
 	sampler2D reflection[NUM_TEXTURE_MAPS];
-	//sampler2D normal[NUM_TEXTURE_MAPS];
+	sampler2D normal[NUM_TEXTURE_MAPS];
     float shininess;
 }; 
   
@@ -153,7 +153,7 @@ vec3 sampleOffsetDirections[20] = vec3[]
    vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
 );   
 
-
+uniform bool bHasNormalMap = false;
 
 void main()
 {   
@@ -189,8 +189,18 @@ void main()
 		
 		vec3 specularColor = vec3(texture(material.specular[0], texCoords));
 
-		vec3 norm = normalize(fs_in.Normal);	
-		vec3 viewDir = normalize(cameraPos - fs_in.FragPos);
+		vec3 norm(0);
+		vec3 viewDir(0);
+		if(!bHasNormalMap)
+		{
+			norm = normalize(fs_in.Normal);	
+			viewDir = normalize(cameraPos - fs_in.FragPos);
+		}
+		else
+		{
+			norm = vec3(texture(material.normal[0], texCoords));	
+			viewDir = normalize(fs_in.tanCameraPos - fs_in.tanFragPos);
+		}
 
 		if(!(bPointLights || bDirectionalLight || bSpotLight))
 			col = vec4(diffuseColor, 1.0);

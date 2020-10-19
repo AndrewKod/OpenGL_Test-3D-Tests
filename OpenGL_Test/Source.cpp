@@ -220,6 +220,8 @@ GLsizeiptr CalcStructSizeUBO(GLsizeiptr structSize);
 #define NUM_POINT_LIGHTS 16
 
 GLuint lightsUBO = 0;
+GLuint pointLightPositionsUBO = 0;
+GLuint dirLightDirectionUBO = 0;
 struct Lights
 {
 	DirectionalLight directionalLight;
@@ -242,12 +244,28 @@ struct Lights
 		GLint spotLightOffset = dirLightSize;
 		GLint pointLightOffset = dirLightSize + spotLightSize;
 				
+		//update lights UBOs
 		glBindBuffer(GL_UNIFORM_BUFFER, lightsUBO);		
 		
 		glBufferSubData(GL_UNIFORM_BUFFER, dirLightOffset,		dirLightSize,		&directionalLight);
 		glBufferSubData(GL_UNIFORM_BUFFER, spotLightOffset,		spotLightSize,		&spotLight);
 		glBufferSubData(GL_UNIFORM_BUFFER, pointLightOffset,	pointLightsSize,	&pointLights[0]);
 
+
+		glBindBuffer(GL_UNIFORM_BUFFER, pointLightPositionsUBO);
+
+		for (GLint i = 0; i < NUM_POINT_LIGHTS; i++)
+		{
+			glBufferSubData(GL_UNIFORM_BUFFER, 
+				i* sizeof(glm::vec4), sizeof(glm::vec4), &pointLights[i].position);			
+		}
+		
+
+
+		glBindBuffer(GL_UNIFORM_BUFFER, dirLightDirectionUBO);
+
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec4), &directionalLight.direction);
+		
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 }
@@ -423,6 +441,9 @@ int main()
 	Shader modelShaderNormals("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
 		"Shaders/Geometry Shader Model Normals.glsl");
 
+	Shader skullShader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
+		"Shaders/Geometry Shader Model.glsl");
+
 	Shader dirLightDepthShader("Shaders/Dir Light Depth VS.glsl", "Shaders/Dir Light Depth FS.glsl");
 
 	Shader pointLightDepthShader("Shaders/Point Light Depth VS.glsl", "Shaders/Point Light Depth FS.glsl",
@@ -449,6 +470,8 @@ int main()
 	modelShader.BindUniformBuffer("Matrices", 0);
 	modelShaderNormals.BindUniformBuffer("Matrices", 0);
 
+	skullShader.BindUniformBuffer("Matrices", 0);
+
 	/////////////////////////////////////SETTINGS UNIFORM BUFFER////////////////////////////////////	
 	glGenBuffers(1, &settingsUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, settingsUBO);
@@ -467,6 +490,8 @@ int main()
 	modelShaderNormals.BindUniformBuffer("Settings", 1);
 	postProcShader.BindUniformBuffer("Settings", 1);
 	skyboxShader.BindUniformBuffer("Settings", 1);
+
+	skullShader.BindUniformBuffer("Settings", 1);
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/////////////////////////////////////LIGHTS UNIFORM BUFFER////////////////////////////////////	
@@ -485,7 +510,39 @@ int main()
 		2);				//binding point
 
 	modelShader.BindUniformBuffer("Lights", 2);
-	
+	skullShader.BindUniformBuffer("Lights", 2);
+
+	glGenBuffers(1, &pointLightPositionsUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, pointLightPositionsUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * NUM_POINT_LIGHTS, NULL, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBufferBase(
+		GL_UNIFORM_BUFFER,
+		3,					//binding point
+		pointLightPositionsUBO);		//uniform buffer ID
+
+	shader.BindUniformBuffer(
+		"PointLightPositions",		//uniform block name
+		3);				//binding point
+
+	modelShader.BindUniformBuffer("PointLightPositions", 3);
+	skullShader.BindUniformBuffer("PointLightPositions", 3);
+
+	glGenBuffers(1, &dirLightDirectionUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, dirLightDirectionUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), NULL, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBufferBase(
+		GL_UNIFORM_BUFFER,
+		4,					//binding point
+		dirLightDirectionUBO);		//uniform buffer ID
+
+	shader.BindUniformBuffer(
+		"DirLightDirection",		//uniform block name
+		4);				//binding point
+
+	modelShader.BindUniformBuffer("DirLightDirection", 4);
+	skullShader.BindUniformBuffer("DirLightDirection", 4);
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -517,6 +574,9 @@ int main()
 
 	modelShader.UseProgram();
 	modelShader.SetFloat("material.shininess", 32.f);
+
+	skullShader.UseProgram();
+	skullShader.SetFloat("material.shininess", 32.f);
 
 	postProcShader.UseProgram();
 	postProcShader.SetInt("screenTexture", 0);
@@ -605,7 +665,8 @@ int main()
 	modelShaderNormals.UseProgram();
 	modelShaderNormals.SetMat4("model", mod);
 
-
+	skullShader.UseProgram();
+	skullShader.SetMat4("model", mod);
 	///////////////////////////////////////LIGHTS////////////////////////////////////
 		
 	std::vector<PointLight> pointLights;
@@ -618,7 +679,7 @@ int main()
 
 	///////////////////////////////////INSTANCING//////////////////////////////////
 
-	Shader skullShader = modelShader;
+	//Shader skullShader = modelShader;
 	
 	Model skull("Models/Skull/Skull.obj", 0, 1.f, false);
 
@@ -789,6 +850,10 @@ int main()
 		if (settings.bInstancing)
 		{
 			skullShader.UseProgram();
+			skullShader.SetVec3("cameraPos", camera.Position);
+			skullShader.SetFloat("time", glfwGetTime());
+			skullShader.SetMat4("model", mod);
+			skullShader.SetBool("bReflect", false);
 			skullShader.SetBool("bInstancing", true);
 			skull.Draw(skullShader, true, amount);
 			skullShader.SetBool("bInstancing", false);

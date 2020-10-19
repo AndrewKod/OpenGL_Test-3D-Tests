@@ -97,6 +97,9 @@ public:
 			glBindTexture(GL_TEXTURE_2D, textures[i].id);
 		}
 
+		if (normalNr > 0)
+			shader.SetBool("bHasNormalMap", true);
+
 		//Bind skybox cubemap
 		if (this->skyboxID != 0)
 		{//glEnable(GL_TEXTURE_CUBE_MAP);
@@ -129,6 +132,8 @@ public:
 
 		// always good practice to set everything back to defaults once configured.
 		glActiveTexture(GL_TEXTURE0);
+
+		shader.SetBool("bHasNormalMap", false);
 	}
 
 private:
