@@ -45,6 +45,8 @@ layout (std140) uniform Matrices
     mat4 projection;    
 };
 
+#define NUM_POINT_LIGHTS 16
+
 out VS_OUT {
     vec3 gs_normal;
 
@@ -56,10 +58,27 @@ out VS_OUT {
 
 	vec4 fs_fragPosDirLightSpace;
 
+	vec3 fs_tanFragPos;
+	vec3 fs_tanCameraPos;
+	vec3 fs_tanPointLightPositions[NUM_POINT_LIGHTS];
+	vec3 fs_tanDirLightDirection;
+
+
 } vs_out;
 
 //Shadows
 uniform mat4 dirLightSpaceMatrix;
+
+uniform vec3 cameraPos;
+
+layout (std140) uniform PointLightPositions
+{
+	vec4 pointLightPositions[NUM_POINT_LIGHTS];
+};
+layout (std140) uniform DirLightDirection
+{
+	vec4 dirLightDirection;
+};
 
 void main()
 {
@@ -82,5 +101,18 @@ void main()
 	vs_out.fs_fragPosDirLightSpace = dirLightSpaceMatrix * vec4(vs_out.fs_fragPos, 1.0);
 
 	gl_Position = projection * view * (bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0);
-	
+
+	////////////////NORMAL MAP/////////////////
+	vec3 T = normalize(vec3(model * vec4(tangent,   0.0)));
+	vec3 B = normalize(vec3(model * vec4(bitangent, 0.0)));
+	vec3 N = normalize(vec3(model * vec4(normal,    0.0)));
+	mat3 TBN = transpose(mat3(T, B, N));
+    vs_out.fs_tanCameraPos  = TBN * cameraPos;
+    vs_out.fs_tanFragPos  = TBN * vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 0.0));
+	for(int i = 0; i < NUM_POINT_LIGHTS; i++)
+	{
+		vs_out.fs_tanPointLightPositions[i] = TBN * vec3(pointLightPositions[i]);
+	}
+
+	vs_out.fs_tanDirLightDirection = TBN * vec3(dirLightDirection);
 }

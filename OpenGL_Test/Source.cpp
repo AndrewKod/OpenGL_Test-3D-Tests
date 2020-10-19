@@ -505,6 +505,8 @@ int main()
 	GLuint cubeTexture = loadTexture("Textures/container2.png", bLoadSRGB);
 	GLuint cubeSpecTexture = loadTexture("Textures/container2_specular.png");
 	GLuint floorTexture = loadTexture("Textures/container.jpg", bLoadSRGB);
+	GLuint wallTexture = loadTexture("Textures/brickwall.jpg", bLoadSRGB);
+	GLuint wallNormTexture = loadTexture("Textures/brickwall_normal.jpg");
 
     // shader configuration
     // --------------------

@@ -2,6 +2,8 @@
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3) out;
 
+#define NUM_POINT_LIGHTS 16
+
 in VS_OUT {    
 	vec3 gs_normal;
 
@@ -13,14 +15,28 @@ in VS_OUT {
 
 	vec4 fs_fragPosDirLightSpace;
 
+	vec3 fs_tanFragPos;
+	vec3 fs_tanCameraPos;
+	vec3 fs_tanPointLightPositions[NUM_POINT_LIGHTS];
+	vec3 fs_tanDirLightDirection;
+
 } gs_in[];
 
-out vec2 TexCoords;
-out vec3 Normal;
-out vec3 Position;
-out vec3 FragPos;/*fragment shader's fragment coords*/
-out vec4 FragPosDirLightSpace;
 
+
+out GS_OUT {
+    vec2 TexCoords;
+	vec3 Normal;
+	vec3 Position;
+	vec3 FragPos;/*fragment shader's fragment coords*/
+	vec4 FragPosDirLightSpace;
+
+	vec3 tanFragPos;
+	vec3 tanCameraPos;
+	vec3 tanPointLightPositions[NUM_POINT_LIGHTS];
+	vec3 tanDirLightDirection;
+
+} gs_out;
 
 uniform float time;
 
@@ -50,13 +66,18 @@ void main() {
 		else
 			gl_Position = gl_in[i].gl_Position;
 
-		TexCoords = gs_in[i].fs_texCoords;
-		Normal =	gs_in[i].fs_normal;
-		Position =	gs_in[i].fs_position;
+		gs_out.TexCoords =	gs_in[i].fs_texCoords;
+		gs_out.Normal =		gs_in[i].fs_normal;
+		gs_out.Position =	gs_in[i].fs_position;
 
-		FragPos =	gs_in[i].fs_fragPos;
+		gs_out.FragPos =	gs_in[i].fs_fragPos;
 
-		FragPosDirLightSpace = gs_in[i].fs_fragPosDirLightSpace;
+		gs_out.FragPosDirLightSpace = gs_in[i].fs_fragPosDirLightSpace;
+
+		gs_out.tanFragPos = gs_in[i].fs_tanFragPos;
+		gs_out.tanCameraPos = gs_in[i].fs_tanCameraPos;
+		gs_out.tanPointLightPositions = gs_in[i].fs_tanPointLightPositions;
+		gs_out.tanDirLightDirection = gs_in[i].fs_tanDirLightDirection;
 		
 		EmitVertex();
 	}
