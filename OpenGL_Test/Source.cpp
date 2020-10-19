@@ -14,15 +14,7 @@
 #include <iostream>
 
 
-/////////////////////////////SETTINGS////////////////////////////////
-//Gamma-correction				G
-//Instancing					I
-//Show Normals					N
-//Post Process Sobel Effect		P
-//Shadows						O
-//Anti-Aliasing					U
-//
-/////////////////////////////////////////////////////////////////////
+
 
 
 
@@ -280,6 +272,9 @@ lights;
 
 void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO);
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO);
+void GenTangentsAndBitangents(float vertices[],
+	int verticesSize, int verticesStep, int posOffset, int uvOffset, int vertsPerFace,
+	float tangents[], float biangents[], int tanSize);
 void GenPostProcVAO(GLuint& postProcVAO, GLuint& postProcVBO);
 void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO);
 
@@ -288,11 +283,14 @@ void FillModelMatrices(std::vector<glm::mat4>& cubeModelMatrices);
 
 void DrawCubes(Shader & shader, GLuint VAO,
 	const std::vector<glm::mat4>& cubeModelMatrices, const std::vector<GLuint>* pointLightDepthCubemaps = nullptr,
-	GLuint diffTexture = 0, GLuint specTexture = 0, GLuint dirLightDepthMapTex = 0,
+	GLuint diffTexture = 0, GLuint specTexture = 0,
+	GLuint wallTexture = 0, GLuint wallNormalMap = 0,
+	GLuint dirLightDepthMapTex = 0,
 	glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false, glm::vec4 borderColor = glm::vec4(0.f)
 	);
 void DrawFloor(Shader & shader, GLuint VAO,
 	GLuint diffTexture = 0, GLuint specTexture = 0,
+	GLuint wallTexture = 0, GLuint wallNormalMap = 0,
 	GLuint dirLightDepthMapTex = 0,
 	const std::vector<GLuint>* pointLightDepthCubemaps = nullptr);
 
@@ -301,7 +299,9 @@ void DrawTransparent(Shader & shader, GLuint VAO, GLuint texture, const std::vec
 void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint cubeVAO, const std::vector<glm::mat4>& cubeModelMatrices,
 	GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
-	GLuint cubeDiffTexture, GLuint cubeSpecTexture, GLuint floorTexture, GLuint cubemapTexture,
+	GLuint cubeDiffTexture, GLuint cubeSpecTexture,
+	GLuint floorTexture, GLuint cubemapTexture,
+	GLuint wallTexture, GLuint wallNormalMap,
 	GLuint dirLightDepthMapTex, const std::vector<GLuint>* pointLightDepthCubemaps);
 
 void DrawPostProc(Shader & shader, GLuint VAO,
@@ -568,7 +568,7 @@ int main()
 	GLuint cubeSpecTexture = loadTexture("Textures/container2_specular.png");
 	GLuint floorTexture = loadTexture("Textures/container.jpg", bLoadSRGB);
 	GLuint wallTexture = loadTexture("Textures/brickwall.jpg", bLoadSRGB);
-	GLuint wallNormTexture = loadTexture("Textures/brickwall_normal.jpg");
+	GLuint wallNormalMap = loadTexture("Textures/brickwall_normal.jpg");
 
     // shader configuration
     // --------------------
@@ -792,7 +792,10 @@ int main()
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
-			cubeTexture, cubeSpecTexture, floorTexture, cubemapTexture, dirLightDepthMapTexID,
+			cubeTexture, cubeSpecTexture,
+			floorTexture, cubemapTexture,
+			wallTexture, wallNormalMap,
+			dirLightDepthMapTexID,
 			pointLightDepthCubemapsPtr);
 
 
@@ -806,7 +809,10 @@ int main()
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
-			cubeTexture, cubeSpecTexture, floorTexture, cubemapTexture, dirLightDepthMapTexID,
+			cubeTexture, cubeSpecTexture,
+			floorTexture, cubemapTexture,
+			wallTexture, wallNormalMap,
+			dirLightDepthMapTexID,
 			pointLightDepthCubemapsPtr);
 
 		// now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
@@ -925,7 +931,9 @@ int main()
 void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint cubeVAO, const std::vector<glm::mat4>& cubeModelMatrices,
 	GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
-	GLuint cubeDiffTexture, GLuint cubeSpecTexture, GLuint floorTexture, GLuint cubemapTexture,
+	GLuint cubeDiffTexture, GLuint cubeSpecTexture,
+	GLuint floorTexture, GLuint cubemapTexture,
+	GLuint wallTexture, GLuint wallNormalMap,
 	GLuint dirLightDepthMapTex, const std::vector<GLuint>* pointLightDepthCubemaps)
 {
 	
@@ -963,7 +971,9 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	// cubes
 	DrawCubes(shader, cubeVAO,
 		cubeModelMatrices, pointLightDepthCubemaps,
-		cubeDiffTexture, cubeSpecTexture, dirLightDepthMapTex);
+		cubeDiffTexture, cubeSpecTexture,
+		wallTexture, wallNormalMap, 
+		dirLightDepthMapTex);
 
 	// 2nd. render pass: now draw slightly scaled versions of the objects, this time disabling stencil writing.
 	// Because the stencil buffer is now filled with several 1s. The parts of the buffer that are 1 are not drawn,
@@ -979,7 +989,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	// cubes for borders
 	DrawCubes(shader, cubeVAO,
 		cubeModelMatrices, nullptr,
-		0, 0, 0,
+		0, 0, 0, 0, 0,
 		glm::vec3(scale), true, borderColor);
 
 	
@@ -995,7 +1005,9 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	glStencilMask(0x00);
 	// floor
 	DrawFloor(shader, planeVAO,
-		floorTexture, cubeSpecTexture, dirLightDepthMapTex, pointLightDepthCubemaps);
+		floorTexture, cubeSpecTexture,
+		wallTexture, wallNormalMap,
+		dirLightDepthMapTex, pointLightDepthCubemaps);
 
 	glStencilMask(0xFF);
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
@@ -1275,7 +1287,9 @@ unsigned int loadTexture(char const * path, bool bSRGB)
 
 void DrawCubes(Shader & shader, GLuint VAO,
 	const std::vector<glm::mat4>& cubeModelMatrices, const std::vector<GLuint>* pointLightDepthCubemaps,
-	GLuint diffTexture, GLuint specTexture, GLuint dirLightDepthMapTex,
+	GLuint diffTexture, GLuint specTexture,
+	GLuint wallTexture, GLuint wallNormalMap,
+	GLuint dirLightDepthMapTex,
 	glm::vec3 scale, bool bStencil, glm::vec4 borderColor)
 {
 	shader.UseProgram();
@@ -1340,7 +1354,9 @@ void DrawCubes(Shader & shader, GLuint VAO,
 }
 
 void DrawFloor(Shader & shader, GLuint VAO,
-	GLuint diffTexture, GLuint specTexture, GLuint dirLightDepthMapTex,
+	GLuint diffTexture, GLuint specTexture,
+	GLuint wallTexture, GLuint wallNormalMap,
+	GLuint dirLightDepthMapTex,
 	const std::vector<GLuint>* pointLightDepthCubemaps)
 {
 	//glDisable(GL_CULL_FACE);
@@ -1701,6 +1717,69 @@ void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO)
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));//norm
 
 	glBindVertexArray(0);
+
+	const int tanSize = 108;
+	float cubeTangents[108];
+	float cubeBiangents[108];
+
+	int verticesSize = sizeof(cubeVertices) / sizeof(float);
+	int posOffset = 0;
+	int uvOffset = 5;
+	int step = 8;
+	int vertsPerFace = 6;
+}
+
+void GenTangentsAndBitangents(float vertices[],
+	int verticesSize, int verticesStep, int posOffset, int uvOffset, int vertsPerFace,
+	float tangents[], float biangents[], int tanSize)
+{
+	for (int vertID = 0; vertID < verticesSize; vertID += verticesStep * vertsPerFace)
+	{
+		int posX_Index = vertID + posOffset;
+		int uvX_Index = vertID + posOffset;
+		glm::vec3 positions[3];
+		glm::vec2 UVs[3];
+
+		for (int i = 0; i < 3; i++)
+		{
+			positions[i] = glm::vec3(
+				vertices[posX_Index + 0],
+				vertices[posX_Index + 1],
+				vertices[posX_Index + 2]);
+
+			UVs[i] = glm::vec2(
+				vertices[uvX_Index + 0],
+				vertices[uvX_Index + 1]);
+
+			posX_Index += verticesStep;
+			uvX_Index += verticesStep;
+		}
+
+		glm::vec3 edge1 = positions[1] - positions[0];
+		glm::vec3 edge2 = positions[2] - positions[0];
+		glm::vec2 deltaUV1 = UVs[2] - UVs[1];
+		glm::vec2 deltaUV2 = UVs[3] - UVs[1];
+
+		float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+		glm::vec3 tangent;
+		glm::vec3 bitangent;
+
+		tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+		tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+		tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+		tangent = glm::normalize(tangent);
+
+		bitangent.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+		bitangent.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+		bitangent.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+		bitangent = glm::normalize(bitangent);
+
+		for (int i = 0; i < tanSize; i += 3 * vertsPerFace)
+		{
+
+		}
+	}
 }
 
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
@@ -1708,7 +1787,7 @@ void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
 	float planeVertices[] = {
 		// positions			// texture Coords		//norm
 		 50.0f, -0.5f,  50.0f,	20.0f, 0.0f,			0.0f,  1.0f,  0.0f,
-		-50.0f, -0.5f,  50.0f,  0.0f, 0.0f,			0.0f,  1.0f,  0.0f,
+		-50.0f, -0.5f,  50.0f,  0.0f, 0.0f,				0.0f,  1.0f,  0.0f,
 		-50.0f, -0.5f, -50.0f,  0.0f, 20.0f,			0.0f,  1.0f,  0.0f,
 
 		 50.0f, -0.5f,  50.0f,  20.0f, 0.0f,			0.0f,  1.0f,  0.0f,

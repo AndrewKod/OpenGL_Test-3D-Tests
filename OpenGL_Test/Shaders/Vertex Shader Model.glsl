@@ -98,19 +98,19 @@ void main()
 		vs_out.gs_normal = normalize(vec3(projection * vec4(normalMatrix * normal, 0.0)));		
 	}
 	
-	vs_out.fs_fragPos = vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0f));		
+	vs_out.fs_fragPos = vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0f));//1.0 for correct lightning	
 	
 	vs_out.fs_fragPosDirLightSpace = dirLightSpaceMatrix * vec4(vs_out.fs_fragPos, 1.0);
 
 	gl_Position = projection * view * (bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0);
 
 	////////////////NORMAL MAP/////////////////
-	vec3 T = normalize(vec3(model * vec4(tangent,   0.0)));
-	vec3 B = normalize(vec3(model * vec4(bitangent, 0.0)));
-	vec3 N = normalize(vec3(model * vec4(normal,    0.0)));
+	vec3 T = normalize(vec3((bInstancing ? instanceModelMatrix : model) * vec4(tangent,   0.0)));
+	vec3 B = normalize(vec3((bInstancing ? instanceModelMatrix : model) * vec4(bitangent, 0.0)));
+	vec3 N = normalize(vec3((bInstancing ? instanceModelMatrix : model) * vec4(normal,    0.0)));
 	mat3 TBN = transpose(mat3(T, B, N));
     vs_out.fs_tanCameraPos  = TBN * cameraPos;
-    vs_out.fs_tanFragPos  = TBN * vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 0.0));
+    vs_out.fs_tanFragPos  = TBN * vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0));//1.0 for correct lightning	
 	for(int i = 0; i < NUM_POINT_LIGHTS; i++)
 	{
 		vs_out.fs_tanPointLightPositions[i] = TBN * vec3(pointLightPositions[i]);
