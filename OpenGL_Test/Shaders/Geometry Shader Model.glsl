@@ -19,6 +19,7 @@ in VS_OUT {
 	vec3 fs_tanCameraPos;
 	vec3 fs_tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 fs_tanDirLightDirection;
+	vec4 fs_tanFragPosDirLightSpace;
 
 } gs_in[];
 
@@ -35,6 +36,7 @@ out GS_OUT {
 	vec3 tanCameraPos;
 	vec3 tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 tanDirLightDirection;
+	vec4 tanFragPosDirLightSpace;
 
 } gs_out;
 

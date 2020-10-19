@@ -37,6 +37,8 @@ layout (std140) uniform Settings
 	bool bSpotLight;
 
 	bool bShadows;
+	
+	bool bUseNormalMap;
 };
 
 layout (std140) uniform Matrices
@@ -62,7 +64,7 @@ out VS_OUT {
 	vec3 fs_tanCameraPos;
 	vec3 fs_tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 fs_tanDirLightDirection;
-
+	vec4 fs_tanFragPosDirLightSpace;
 
 } vs_out;
 
@@ -115,4 +117,6 @@ void main()
 	}
 
 	vs_out.fs_tanDirLightDirection = TBN * vec3(dirLightDirection);
+
+	vs_out.fs_tanFragPosDirLightSpace = mat4(TBN) * vs_out.fs_fragPosDirLightSpace;
 }

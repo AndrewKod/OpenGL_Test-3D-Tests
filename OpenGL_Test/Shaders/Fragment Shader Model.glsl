@@ -85,6 +85,7 @@ in GS_OUT {
 	vec3 tanCameraPos;
 	vec3 tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 tanDirLightDirection;
+	vec4 tanFragPosDirLightSpace;
 
 } fs_in;
 
@@ -118,6 +119,8 @@ layout (std140) uniform Settings
 	bool bSpotLight;
 
 	bool bShadows;
+
+	bool bUseNormalMap;
 };
 
 
@@ -189,17 +192,18 @@ void main()
 		
 		vec3 specularColor = vec3(texture(material.specular[0], texCoords));
 
-		vec3 norm(0);
-		vec3 viewDir(0);
-		if(!bHasNormalMap)
+		vec3 norm = vec3(0.0);
+		vec3 viewDir =  vec3(0.0);
+		if(bHasNormalMap && bUseNormalMap)
 		{
-			norm = normalize(fs_in.Normal);	
-			viewDir = normalize(cameraPos - fs_in.FragPos);
+			norm = vec3(texture(material.normal[0], texCoords));	
+			norm = normalize(norm * 2.0 - 1.0); 
+			viewDir = normalize(fs_in.tanCameraPos - fs_in.tanFragPos);
 		}
 		else
 		{
-			norm = vec3(texture(material.normal[0], texCoords));	
-			viewDir = normalize(fs_in.tanCameraPos - fs_in.tanFragPos);
+			norm = normalize(fs_in.Normal);	
+			viewDir = normalize(cameraPos - fs_in.FragPos);
 		}
 
 		if(!(bPointLights || bDirectionalLight || bSpotLight))
@@ -249,7 +253,9 @@ float LinearizeDepth(float depth)
 
 vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor)
 {	
-	vec3 directedLightDir = normalize(vec3(-directionalLight.direction));
+	vec3 directedLightDir = normalize(
+				bHasNormalMap && bUseNormalMap ?
+				-fs_in.tanDirLightDirection : vec3(-directionalLight.direction));
 	
     // диффузное освещение
     float diff = max(dot(normal, directedLightDir), 0.0);
@@ -289,12 +295,16 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 	if(!pointLights[lightId].bEnabled)
 		return vec3(0.f);
 	
+	vec3 FragPos = bHasNormalMap && bUseNormalMap ? fs_in.tanFragPos : fs_in.FragPos;
+	vec3 PointLightPosition = bHasNormalMap && bUseNormalMap ? 
+						fs_in.tanPointLightPositions[lightId] : vec3(pointLights[lightId].position);
+
 	/*Point Light Fading*/
-	float dist = length(vec3(pointLights[lightId].position) - fs_in.FragPos);
+	float dist = length(vec3(PointLightPosition) - FragPos);
 	float attenuation = 1.0 / (pointLights[lightId].constant + pointLights[lightId].linear * dist + 
     		    pointLights[lightId].quadratic * (dist * dist));
 
-	vec3 pointLightDir = normalize(vec3(pointLights[lightId].position) - fs_in.FragPos);	
+	vec3 pointLightDir = normalize(vec3(PointLightPosition) - FragPos);	
     // диффузное освещение
     float diff = max(dot(normal, pointLightDir), 0.0);
 
@@ -329,7 +339,9 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 
 vec3 CalcSpotLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor)
 {		
-	vec3 spotLightDir = normalize(cameraPos - fs_in.FragPos);/*projectedLightDir == viewDir*/
+	vec3 spotLightDir = normalize(
+				bHasNormalMap && bUseNormalMap ?
+				fs_in.tanCameraPos - fs_in.tanFragPos : cameraPos - fs_in.FragPos);/*projectedLightDir == viewDir*/
 	
 	/*projected light coeffs*/
 	float theta = dot(spotLightDir, normalize(vec3(-spotLight.direction)));
@@ -369,6 +381,8 @@ vec3 CalcSpotLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCo
 
 float DirLightShadowCalculation(vec3 normal, vec3 lightDir)
 {
+	vec4 FragPosDirLightSpace = bHasNormalMap && bUseNormalMap ? fs_in.tanFragPosDirLightSpace : fs_in.FragPosDirLightSpace;
+
 	// perform perspective divide
     vec3 projCoords = fs_in.FragPosDirLightSpace.xyz / fs_in.FragPosDirLightSpace.w;
 
@@ -405,8 +419,13 @@ float DirLightShadowCalculation(vec3 normal, vec3 lightDir)
 
 float PointLightShadowCalculation(vec3 normal, vec3 lightDir, int lightId)
 {
+	vec3 FragPos = bHasNormalMap && bUseNormalMap ? fs_in.tanFragPos : fs_in.FragPos;
+	vec3 CamPos =  bHasNormalMap && bUseNormalMap ? fs_in.tanCameraPos : cameraPos;
+	vec3 PointLightPosition = bHasNormalMap && bUseNormalMap ? 
+						fs_in.tanPointLightPositions[lightId] : vec3(pointLights[lightId].position);
+
 	//vector between FragPos and light position
-	vec3 fragToLight = fs_in.FragPos - vec3(pointLights[lightId].position);    
+	vec3 fragToLight = FragPos - PointLightPosition;    
 
 	//calculated vector is using for cubemap sampling
     float closestDepth = texture(pointLight_ShadowMaps[lightId], fragToLight).r;
@@ -420,7 +439,7 @@ float PointLightShadowCalculation(vec3 normal, vec3 lightDir, int lightId)
 	float shadow = 0.0;
 
 	int samples  = 20;
-	float viewDistance = length(cameraPos - fs_in.FragPos);
+	float viewDistance = length(CamPos - FragPos);
 	float diskRadius = (1.0 + (viewDistance / far_plane)) / 25.0;  
 	for(int i = 0; i < samples; ++i)
 	{

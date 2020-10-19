@@ -135,10 +135,14 @@ struct Settings
 	GLint bSpotLight =				false;//3
 
 	GLint bShadows =				false;//O
+	GLint bUseNormalMap =			false;//M
+
 	GLint bShowDirLightDepthMap =	false;//L Draw depth map on post process rectangle
 
 	GLint bInstancing =				false;//I excluded from settingsUBO
 	GLint bShowNormals =			false;//N excluded from settingsUBO
+
+	
 
 	void UpdateSettings()
 	{
@@ -153,6 +157,7 @@ struct Settings
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bDirectionalLight),		sizeof(GLint), &bDirectionalLight);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bSpotLight),				sizeof(GLint), &bSpotLight);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShadows),				sizeof(GLint), &bShadows);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bUseNormalMap),			sizeof(GLint), &bUseNormalMap);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 }
@@ -1170,6 +1175,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 			settings.UpdateSettings();
 		}
+	}
+	if (key == GLFW_KEY_M && action == GLFW_PRESS)
+	{
+		settings.bUseNormalMap = !settings.bUseNormalMap;
+
+		settings.UpdateSettings();
 	}
 }
 
