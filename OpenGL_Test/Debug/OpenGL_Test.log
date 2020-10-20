@@ -1,46 +1,27 @@
-﻿  Camera.cpp
-  Shader.cpp
-  Source.cpp
+﻿  Source.cpp
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\shader.h(60): warning C4101: 'e': unreferenced local variable
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\shader.h(228): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(44): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(45): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(744): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(834): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(859): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(918): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1204): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1205): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1209): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1210): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1212): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1213): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1222): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1315): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1328): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1379): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1464): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1863): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1882): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1886): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2010): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2041): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2091): warning C4244: '=': conversion from 'GLfloat' to 'GLsizeiptr', possible loss of data
-  Generating Code...
-SOIL.lib(stb_image_aug.obj) : warning LNK4099: PDB 'SOIL.pdb' was not found with 'SOIL.lib(stb_image_aug.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\SOIL.pdb'; linking object as if no debug info
-glfw3.lib(context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(context.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(init.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(input.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(input.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(monitor.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(monitor.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(vulkan.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(vulkan.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(window.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(window.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_init.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_joystick.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_joystick.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_monitor.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_monitor.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_time.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_time.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_thread.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_thread.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(win32_window.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_window.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(wgl_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(wgl_context.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(egl_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(egl_context.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
-glfw3.lib(osmesa_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(osmesa_context.obj)' or at 'D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\glfw.pdb'; linking object as if no debug info
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(36): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(37): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(746): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(842): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(867): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(926): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1218): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1219): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1223): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1224): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1226): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1227): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1236): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1352): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1365): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1441): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1526): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2058): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2077): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2081): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2205): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2236): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2286): warning C4244: '=': conversion from 'GLfloat' to 'GLsizeiptr', possible loss of data
   OpenGL_Test.vcxproj -> D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\OpenGL_Test.exe

@@ -270,11 +270,13 @@ lights;
 
 
 
-void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO);
-void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO);
+void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO, GLuint& tanVBO, GLuint& bitanVBO);
+void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO, GLuint& tanVBO, GLuint& bitanVBO);
 void GenTangentsAndBitangents(float vertices[],
 	int verticesSize, int verticesStep, int posOffset, int uvOffset, int vertsPerFace,
-	float tangents[], float biangents[], int tanSize);
+	glm::vec3 tangents[], glm::vec3 biangents[]);
+void AddTangentsAndBitangentsAttributes(GLuint& VAO, GLuint& tanVBO, GLuint& bitanVBO,
+	glm::vec3 tangents[], glm::vec3 bitangents[], GLsizei arrSize);
 void GenPostProcVAO(GLuint& postProcVAO, GLuint& postProcVBO);
 void GenSkyboxVAO(GLuint& skyboxVAO, GLuint& skyboxVBO);
 
@@ -552,11 +554,11 @@ int main()
 
 
     // cube VAO
-    GLuint cubeVAO, cubeVBO;
-	GenCubeVAO(cubeVAO, cubeVBO);
+    GLuint cubeVAO, cubeVBO, cubeTanVBO, cubeBitanVBO;
+	GenCubeVAO(cubeVAO, cubeVBO, cubeTanVBO, cubeBitanVBO);
     // plane VAO
-	GLuint planeVAO, planeVBO;
-	GenPlaneVAO(planeVAO, planeVBO);
+	GLuint planeVAO, planeVBO, planeTanVBO, planeBitanVBO;
+	GenPlaneVAO(planeVAO, planeVBO, planeTanVBO, planeBitanVBO);
 
     // screen quad VAO
 	GLuint postProcVAO, postProcVBO;
@@ -1300,22 +1302,43 @@ void DrawCubes(Shader & shader, GLuint VAO,
 	glBindVertexArray(VAO);
 
 	GLuint texCount = 0;
-	if (diffTexture != 0)
+	if (settings.bUseNormalMap)
 	{
-		glActiveTexture(GL_TEXTURE0 + texCount);
-		glBindTexture(GL_TEXTURE_2D, diffTexture);
-		shader.SetInt("material.diffuse[0]", texCount);
-		texCount++;
-	}
+		if (diffTexture != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, wallTexture);
+			shader.SetInt("material.diffuse[0]", texCount);
+			texCount++;
+		}
 
-	if (specTexture != 0)
+		if (specTexture != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, wallNormalMap);
+			shader.SetInt("material.normal[0]", texCount);
+			shader.SetBool("bHasNormalMap", true);
+			texCount++;
+		}
+	}
+	else
 	{
-		glActiveTexture(GL_TEXTURE0 + texCount);
-		glBindTexture(GL_TEXTURE_2D, specTexture);
-		shader.SetInt("material.specular[0]", texCount);
-		texCount++;
-	}
+		if (diffTexture != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, diffTexture);
+			shader.SetInt("material.diffuse[0]", texCount);
+			texCount++;
+		}
 
+		if (specTexture != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, specTexture);
+			shader.SetInt("material.specular[0]", texCount);
+			texCount++;
+		}
+	}
 	if (dirLightDepthMapTex != 0)
 	{
 		glActiveTexture(GL_TEXTURE0 + texCount);
@@ -1351,6 +1374,7 @@ void DrawCubes(Shader & shader, GLuint VAO,
 	glBindVertexArray(0);
 
 	shader.SetBool("bStencil", false);
+	shader.SetBool("bHasNormalMap", false);
 }
 
 void DrawFloor(Shader & shader, GLuint VAO,
@@ -1366,20 +1390,42 @@ void DrawFloor(Shader & shader, GLuint VAO,
 	glBindVertexArray(VAO);
 
 	GLuint texCount = 0;
-	if (diffTexture != 0)
+	if (settings.bUseNormalMap)
 	{
-		glActiveTexture(GL_TEXTURE0 + texCount);
-		glBindTexture(GL_TEXTURE_2D, diffTexture);
-		shader.SetInt("material.diffuse[0]", texCount);
-		texCount++;
-	}
+		if (diffTexture != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, wallTexture);
+			shader.SetInt("material.diffuse[0]", texCount);
+			texCount++;
+		}
 
-	if (specTexture != 0)
+		if (specTexture != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, wallNormalMap);
+			shader.SetInt("material.normal[0]", texCount);
+			shader.SetBool("bHasNormalMap", true);
+			texCount++;
+		}
+	}
+	else
 	{
-		glActiveTexture(GL_TEXTURE0 + texCount);
-		glBindTexture(GL_TEXTURE_2D, specTexture);
-		shader.SetInt("material.specular[0]", texCount);
-		texCount++;
+		if (diffTexture != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, diffTexture);
+			shader.SetInt("material.diffuse[0]", texCount);
+			texCount++;
+		}
+
+		if (specTexture != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, specTexture);
+			shader.SetInt("material.specular[0]", texCount);
+			texCount++;
+		}
 	}
 
 	if (dirLightDepthMapTex != 0)
@@ -1410,7 +1456,7 @@ void DrawFloor(Shader & shader, GLuint VAO,
 
 	glBindVertexArray(0);
 
-	//glEnable(GL_CULL_FACE);
+	shader.SetBool("bHasNormalMap", false);
 }
 
 void SetKernelValue(Shader & postProcShader, GLint cellID)
@@ -1653,7 +1699,7 @@ void DrawRefractCube(Shader & shader, GLuint VAO, GLuint cubeMapTexture, glm::ve
 	glEnable(GL_TEXTURE_2D);
 }
 
-void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO)
+void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO, GLuint& tanVBO, GLuint& bitanVBO)
 {
 	// set up vertex data (and buffer(s)) and configure vertex attributes
 	// ------------------------------------------------------------------
@@ -1718,71 +1764,30 @@ void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO)
 
 	glBindVertexArray(0);
 
-	const int tanSize = 108;
-	float cubeTangents[108];
-	float cubeBiangents[108];
+	glm::vec3 cubeTangents[36];
+	glm::vec3 cubeBitangents[36];
+	//float cubeTangents[108];
+	//float cubeBiangents[108];
 
 	int verticesSize = sizeof(cubeVertices) / sizeof(float);
 	int posOffset = 0;
-	int uvOffset = 5;
+	int uvOffset = 3;
 	int step = 8;
 	int vertsPerFace = 6;
+
+	GenTangentsAndBitangents(cubeVertices,
+		verticesSize, step, posOffset, uvOffset, vertsPerFace,
+		cubeTangents, cubeBitangents);
+
+	GLsizei arrSize = sizeof(cubeTangents);
+	AddTangentsAndBitangentsAttributes(cubeVAO, tanVBO, bitanVBO,
+		cubeTangents, cubeBitangents, arrSize);
+	
 }
 
-void GenTangentsAndBitangents(float vertices[],
-	int verticesSize, int verticesStep, int posOffset, int uvOffset, int vertsPerFace,
-	float tangents[], float biangents[], int tanSize)
-{
-	for (int vertID = 0; vertID < verticesSize; vertID += verticesStep * vertsPerFace)
-	{
-		int posX_Index = vertID + posOffset;
-		int uvX_Index = vertID + posOffset;
-		glm::vec3 positions[3];
-		glm::vec2 UVs[3];
 
-		for (int i = 0; i < 3; i++)
-		{
-			positions[i] = glm::vec3(
-				vertices[posX_Index + 0],
-				vertices[posX_Index + 1],
-				vertices[posX_Index + 2]);
 
-			UVs[i] = glm::vec2(
-				vertices[uvX_Index + 0],
-				vertices[uvX_Index + 1]);
-
-			posX_Index += verticesStep;
-			uvX_Index += verticesStep;
-		}
-
-		glm::vec3 edge1 = positions[1] - positions[0];
-		glm::vec3 edge2 = positions[2] - positions[0];
-		glm::vec2 deltaUV1 = UVs[2] - UVs[1];
-		glm::vec2 deltaUV2 = UVs[3] - UVs[1];
-
-		float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
-		glm::vec3 tangent;
-		glm::vec3 bitangent;
-
-		tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-		tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-		tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-		tangent = glm::normalize(tangent);
-
-		bitangent.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
-		bitangent.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
-		bitangent.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
-		bitangent = glm::normalize(bitangent);
-
-		for (int i = 0; i < tanSize; i += 3 * vertsPerFace)
-		{
-
-		}
-	}
-}
-
-void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
+void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO, GLuint& tanVBO, GLuint& bitanVBO)
 {
 	float planeVertices[] = {
 		// positions			// texture Coords		//norm
@@ -1807,6 +1812,117 @@ void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO)
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));//uv
 	glEnableVertexAttribArray(3);
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));//norm
+
+	glBindVertexArray(0);
+
+	glm::vec3 tangents[6];
+	glm::vec3 bitangents[6];
+	//float cubeTangents[108];
+	//float cubeBiangents[108];
+
+	int verticesSize = sizeof(planeVertices) / sizeof(float);
+	int posOffset = 0;
+	int uvOffset = 3;
+	int step = 8;
+	int vertsPerFace = 6;
+
+	GenTangentsAndBitangents(planeVertices,
+		verticesSize, step, posOffset, uvOffset, vertsPerFace,
+		tangents, bitangents);
+
+	GLsizei arrSize = sizeof(tangents);
+	AddTangentsAndBitangentsAttributes(planeVAO, tanVBO, bitanVBO,
+		tangents, bitangents, arrSize);
+}
+
+void GenTangentsAndBitangents(float vertices[],
+	int verticesSize, int verticesStep, int posOffset, int uvOffset, int vertsPerFace,
+	glm::vec3 tangents[], glm::vec3 bitangents[])
+{
+	for (int vertID = 0; vertID < verticesSize; vertID += verticesStep * vertsPerFace)
+	{
+		int posX_Index = vertID + posOffset;
+		int uvX_Index = vertID + uvOffset;
+		glm::vec3 positions[3];
+		glm::vec2 UVs[3];
+
+		for (int i = 0; i < 3; i++)
+		{
+			positions[i] = glm::vec3(
+				vertices[posX_Index + 0],
+				vertices[posX_Index + 1],
+				vertices[posX_Index + 2]);
+
+			UVs[i] = glm::vec2(
+				vertices[uvX_Index + 0],
+				vertices[uvX_Index + 1]);
+
+			posX_Index += verticesStep;
+			uvX_Index += verticesStep;
+		}
+
+		glm::vec3 edge1 = positions[1] - positions[0];
+		glm::vec3 edge2 = positions[2] - positions[0];
+		glm::vec2 deltaUV1 = UVs[1] - UVs[0];
+		glm::vec2 deltaUV2 = UVs[2] - UVs[0];
+
+		float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+		glm::vec3 tangent;
+		glm::vec3 bitangent;
+
+		tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+		tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+		tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+		tangent = glm::normalize(tangent);
+
+		bitangent.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+		bitangent.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+		bitangent.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+		bitangent = glm::normalize(bitangent);
+
+		int faceID = vertID / verticesStep / vertsPerFace;
+		/*int tanX_Index = faceID * vertsPerFace * 3;
+		for (int vertCount = 0; vertCount < vertsPerFace; vertCount++)
+		{
+			for (int i = 0; i < 3; i++)
+			{
+				tangents[tanX_Index + i] = tangent[i];
+				bitangents[tanX_Index + i] = bitangent[i];
+			}
+			tanX_Index += 3;
+		}*/
+		int tan_Index = faceID * vertsPerFace;
+		for (int vertCount = 0; vertCount < vertsPerFace; vertCount++)
+		{			
+			tangents[tan_Index + vertCount] = tangent;
+			bitangents[tan_Index + vertCount] = bitangent;
+		}
+	}
+}
+
+void AddTangentsAndBitangentsAttributes(GLuint& VAO, GLuint& tanVBO, GLuint& bitanVBO,
+	glm::vec3 tangents[], glm::vec3 bitangents[], GLsizei arrSize)
+{
+	glBindVertexArray(VAO);
+
+
+	glGenBuffers(1, &tanVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, tanVBO);
+	glBufferData(GL_ARRAY_BUFFER, arrSize, &tangents[0], GL_STATIC_DRAW);
+
+	// настройка атрибутов
+	GLsizei vec3Size = sizeof(glm::vec3);
+	glEnableVertexAttribArray(4);
+	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, vec3Size, (void*)0);
+
+	glGenBuffers(1, &bitanVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, bitanVBO);
+	glBufferData(GL_ARRAY_BUFFER, arrSize, &bitangents[0], GL_STATIC_DRAW);
+
+	glEnableVertexAttribArray(5);
+	glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, vec3Size, (void*)0);
+
 
 	glBindVertexArray(0);
 }
