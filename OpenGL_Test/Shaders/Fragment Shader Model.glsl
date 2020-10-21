@@ -86,6 +86,7 @@ in GS_OUT {
 	vec3 tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 tanDirLightDirection;
 	vec4 tanFragPosDirLightSpace;
+	vec3 tanSpotLightDirection;
 
 } fs_in;
 
@@ -339,19 +340,22 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 
 vec3 CalcSpotLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor)
 {		
-	vec3 spotLightDir = normalize(
+	vec3 spotLightDirToFrag = normalize(
 				bHasNormalMap && bUseNormalMap ?
 				fs_in.tanCameraPos - fs_in.tanFragPos : cameraPos - fs_in.FragPos);/*projectedLightDir == viewDir*/
 	
+	vec3 spotLightDir = bHasNormalMap && bUseNormalMap ?
+				fs_in.tanSpotLightDirection : vec3(spotLight.direction);
+
 	/*projected light coeffs*/
-	float theta = dot(spotLightDir, normalize(vec3(-spotLight.direction)));
+	float theta = dot(spotLightDirToFrag, normalize(vec3(-spotLightDir)));
 	float epsilon   = spotLight.cutOff - spotLight.outerCutOff;
 	float intensity = clamp((theta - spotLight.outerCutOff) / epsilon, 0.0, 1.0);
 
 	float spotDiff = 0.0f;
 	if(theta > spotLight.outerCutOff) 
 	{         
-		spotDiff = max(dot(normal, spotLightDir), 0.0);
+		spotDiff = max(dot(normal, spotLightDirToFrag), 0.0);
 	}
 	spotDiff *= intensity;		
 	
@@ -360,12 +364,12 @@ vec3 CalcSpotLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCo
     
 	if(!bBlinn)
 	{
-		vec3 reflectSpotDir = reflect(-spotLightDir, normal);
+		vec3 reflectSpotDir = reflect(-spotLightDirToFrag, normal);
 		spotSpec = pow(max(dot(viewDir, reflectSpotDir), 0.0), material.shininess);
 	}
 	else
 	{		
-		vec3 halfwayDir = normalize(spotLightDir + viewDir);
+		vec3 halfwayDir = normalize(spotLightDirToFrag + viewDir);
 		spotSpec = pow(max(dot(normal, halfwayDir), 0.0), material.shininess * 2);
 	}
 
@@ -381,22 +385,22 @@ vec3 CalcSpotLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCo
 
 float DirLightShadowCalculation(vec3 normal, vec3 lightDir)
 {
-	vec4 FragPosDirLightSpace = bHasNormalMap && bUseNormalMap ? fs_in.tanFragPosDirLightSpace : fs_in.FragPosDirLightSpace;
+	//vec4 FragPosDirLightSpace = bHasNormalMap && bUseNormalMap ? fs_in.tanFragPosDirLightSpace : fs_in.FragPosDirLightSpace;
+	vec4 FragPosDirLightSpace = fs_in.FragPosDirLightSpace;
 
 	// perform perspective divide
-    vec3 projCoords = fs_in.FragPosDirLightSpace.xyz / fs_in.FragPosDirLightSpace.w;
+    vec3 projCoords = FragPosDirLightSpace.xyz / FragPosDirLightSpace.w;
 
 	//transform coords from [-1, 1] to [0, 1] range
 	projCoords = projCoords * 0.5 + 0.5;
 
 	// get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-    float closestDepth = texture(dirLight_ShadowMap, projCoords.xy).r; 
-	//float closestDepth = texture(dirLight_ShadowMap, vec2(0.0)).r; 
-    // get depth of current fragment from light's perspective
+    //float closestDepth = texture(dirLight_ShadowMap, projCoords.xy).r; 
+	// get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
 
 	float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
-    // check whether current frag pos is in shadow
+	// check whether current frag pos is in shadow
 
 	float shadow  = 0.0;
 
@@ -419,10 +423,14 @@ float DirLightShadowCalculation(vec3 normal, vec3 lightDir)
 
 float PointLightShadowCalculation(vec3 normal, vec3 lightDir, int lightId)
 {
-	vec3 FragPos = bHasNormalMap && bUseNormalMap ? fs_in.tanFragPos : fs_in.FragPos;
-	vec3 CamPos =  bHasNormalMap && bUseNormalMap ? fs_in.tanCameraPos : cameraPos;
-	vec3 PointLightPosition = bHasNormalMap && bUseNormalMap ? 
-						fs_in.tanPointLightPositions[lightId] : vec3(pointLights[lightId].position);
+//	vec3 FragPos = bHasNormalMap && bUseNormalMap ? fs_in.tanFragPos : fs_in.FragPos;
+//	vec3 CamPos =  bHasNormalMap && bUseNormalMap ? fs_in.tanCameraPos : cameraPos;
+//	vec3 PointLightPosition = bHasNormalMap && bUseNormalMap ? 
+//						fs_in.tanPointLightPositions[lightId] : vec3(pointLights[lightId].position);
+
+	vec3 FragPos = fs_in.FragPos;
+	vec3 CamPos =  cameraPos;
+	vec3 PointLightPosition = vec3(pointLights[lightId].position);
 
 	//vector between FragPos and light position
 	vec3 fragToLight = FragPos - PointLightPosition;    

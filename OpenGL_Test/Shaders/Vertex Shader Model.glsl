@@ -65,6 +65,7 @@ out VS_OUT {
 	vec3 fs_tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 fs_tanDirLightDirection;
 	vec4 fs_tanFragPosDirLightSpace;
+	vec3 fs_tanSpotLightDirection;
 
 } vs_out;
 
@@ -80,6 +81,10 @@ layout (std140) uniform PointLightPositions
 layout (std140) uniform DirLightDirection
 {
 	vec4 dirLightDirection;
+};
+layout (std140) uniform SpotLightDirection
+{
+	vec4 spotLightDirection;
 };
 
 void main()
@@ -118,5 +123,7 @@ void main()
 
 	vs_out.fs_tanDirLightDirection = TBN * vec3(dirLightDirection);
 
-	vs_out.fs_tanFragPosDirLightSpace = mat4(TBN) * vs_out.fs_fragPosDirLightSpace;
+	//vs_out.fs_tanFragPosDirLightSpace = mat4(TBN) * vs_out.fs_fragPosDirLightSpace;
+
+	vs_out.fs_tanSpotLightDirection = TBN * vec3(spotLightDirection);
 }

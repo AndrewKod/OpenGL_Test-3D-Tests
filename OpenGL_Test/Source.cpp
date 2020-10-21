@@ -219,6 +219,7 @@ GLsizeiptr CalcStructSizeUBO(GLsizeiptr structSize);
 GLuint lightsUBO = 0;
 GLuint pointLightPositionsUBO = 0;
 GLuint dirLightDirectionUBO = 0;
+GLuint spotLightDirectionUBO = 0;
 struct Lights
 {
 	DirectionalLight directionalLight;
@@ -262,6 +263,11 @@ struct Lights
 		glBindBuffer(GL_UNIFORM_BUFFER, dirLightDirectionUBO);
 
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec4), &directionalLight.direction);
+
+
+		glBindBuffer(GL_UNIFORM_BUFFER, spotLightDirectionUBO);
+
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec4), &spotLight.direction);
 		
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
@@ -550,6 +556,22 @@ int main()
 
 	modelShader.BindUniformBuffer("DirLightDirection", 4);
 	skullShader.BindUniformBuffer("DirLightDirection", 4);
+
+	glGenBuffers(1, &spotLightDirectionUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, spotLightDirectionUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), NULL, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBufferBase(
+		GL_UNIFORM_BUFFER,
+		5,					//binding point
+		spotLightDirectionUBO);		//uniform buffer ID
+
+	shader.BindUniformBuffer(
+		"SpotLightDirection",		//uniform block name
+		5);				//binding point
+
+	modelShader.BindUniformBuffer("SpotLightDirection", 5);
+	skullShader.BindUniformBuffer("SpotLightDirection", 5);
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -1304,7 +1326,7 @@ void DrawCubes(Shader & shader, GLuint VAO,
 	GLuint texCount = 0;
 	if (settings.bUseNormalMap)
 	{
-		if (diffTexture != 0)
+		if (wallTexture != 0)
 		{
 			glActiveTexture(GL_TEXTURE0 + texCount);
 			glBindTexture(GL_TEXTURE_2D, wallTexture);
@@ -1312,11 +1334,12 @@ void DrawCubes(Shader & shader, GLuint VAO,
 			texCount++;
 		}
 
-		if (specTexture != 0)
+		if (wallNormalMap != 0)
 		{
 			glActiveTexture(GL_TEXTURE0 + texCount);
 			glBindTexture(GL_TEXTURE_2D, wallNormalMap);
 			shader.SetInt("material.normal[0]", texCount);
+			//shader.SetInt("material.specular[0]", 0);
 			shader.SetBool("bHasNormalMap", true);
 			texCount++;
 		}
@@ -1336,6 +1359,7 @@ void DrawCubes(Shader & shader, GLuint VAO,
 			glActiveTexture(GL_TEXTURE0 + texCount);
 			glBindTexture(GL_TEXTURE_2D, specTexture);
 			shader.SetInt("material.specular[0]", texCount);
+			//shader.SetInt("material.normal[0]", 0);
 			texCount++;
 		}
 	}
@@ -1351,12 +1375,12 @@ void DrawCubes(Shader & shader, GLuint VAO,
 	{
 		for (int i = 0; i < (*pointLightDepthCubemaps).size(); i++)
 		{
-			glActiveTexture(GL_TEXTURE0 + texCount);
+			glActiveTexture(GL_TEXTURE0 +5+ texCount);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, (*pointLightDepthCubemaps)[i]);
 			char num[3];
 			_itoa_s(i, num, 10);
 
-			shader.SetInt(std::string("pointLight_ShadowMaps[") + num + "]", texCount);
+			shader.SetInt(std::string("pointLight_ShadowMaps[") + num + "]", 5 + texCount);
 
 			texCount++;
 		}
@@ -1392,7 +1416,7 @@ void DrawFloor(Shader & shader, GLuint VAO,
 	GLuint texCount = 0;
 	if (settings.bUseNormalMap)
 	{
-		if (diffTexture != 0)
+		if (wallTexture != 0)
 		{
 			glActiveTexture(GL_TEXTURE0 + texCount);
 			glBindTexture(GL_TEXTURE_2D, wallTexture);
@@ -1400,11 +1424,12 @@ void DrawFloor(Shader & shader, GLuint VAO,
 			texCount++;
 		}
 
-		if (specTexture != 0)
+		if (wallNormalMap != 0)
 		{
 			glActiveTexture(GL_TEXTURE0 + texCount);
 			glBindTexture(GL_TEXTURE_2D, wallNormalMap);
 			shader.SetInt("material.normal[0]", texCount);
+			//shader.SetInt("material.specular[0]", 0);
 			shader.SetBool("bHasNormalMap", true);
 			texCount++;
 		}
@@ -1424,6 +1449,7 @@ void DrawFloor(Shader & shader, GLuint VAO,
 			glActiveTexture(GL_TEXTURE0 + texCount);
 			glBindTexture(GL_TEXTURE_2D, specTexture);
 			shader.SetInt("material.specular[0]", texCount);
+			//shader.SetInt("material.normal[0]", 0);
 			texCount++;
 		}
 	}
@@ -1440,12 +1466,12 @@ void DrawFloor(Shader & shader, GLuint VAO,
 	{
 		for (int i = 0; i < (*pointLightDepthCubemaps).size(); i++)
 		{
-			glActiveTexture(GL_TEXTURE0 + texCount);
+			glActiveTexture(GL_TEXTURE0 + 5 + texCount);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, (*pointLightDepthCubemaps)[i]);
 			char num[3];
 			_itoa_s(i, num, 10);
 
-			shader.SetInt(std::string("pointLight_ShadowMaps[") + num + "]", texCount);
+			shader.SetInt(std::string("pointLight_ShadowMaps[") + num + "]", 5 + texCount);
 
 			texCount++;
 		}

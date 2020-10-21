@@ -20,6 +20,7 @@ in VS_OUT {
 	vec3 fs_tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 fs_tanDirLightDirection;
 	vec4 fs_tanFragPosDirLightSpace;
+	vec3 fs_tanSpotLightDirection;
 
 } gs_in[];
 
@@ -37,6 +38,7 @@ out GS_OUT {
 	vec3 tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 tanDirLightDirection;
 	vec4 tanFragPosDirLightSpace;
+	vec3 tanSpotLightDirection;
 
 } gs_out;
 
@@ -80,7 +82,9 @@ void main() {
 		gs_out.tanCameraPos = gs_in[i].fs_tanCameraPos;
 		gs_out.tanPointLightPositions = gs_in[i].fs_tanPointLightPositions;
 		gs_out.tanDirLightDirection = gs_in[i].fs_tanDirLightDirection;
-		
+		gs_out.tanFragPosDirLightSpace = gs_in[i].fs_tanFragPosDirLightSpace;
+		gs_out.tanSpotLightDirection =  gs_in[i].fs_tanSpotLightDirection;
+
 		EmitVertex();
 	}
    
