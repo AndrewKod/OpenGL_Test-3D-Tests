@@ -167,6 +167,7 @@ uniform bool bHasNormalMap = false;
 uniform bool bHasHeightMap = false;
 uniform float height_scale = 0.1;
 vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir);
+vec2 reliefPM(vec2 inTexCoords, vec3 inViewDir, out float lastDepthValue);
 
 void main()
 {   
@@ -174,10 +175,12 @@ void main()
 
 	if(bUseParallaxMapping && bHasHeightMap)
 	{
+		float lastDepthValue;
 		vec3 viewDir   = normalize(fs_in.tanCameraPos - fs_in.tanFragPos);
 		texCoords = ParallaxMapping(texCoords,  viewDir);
-		if(texCoords.x > 1.0 || texCoords.y > 1.0 || texCoords.x < 0.0 || texCoords.y < 0.0)
-		discard; 
+		//texCoords = reliefPM(texCoords, viewDir, lastDepthValue);
+		//if(texCoords.x > 1.0 || texCoords.y > 1.0 || texCoords.x < 0.0 || texCoords.y < 0.0)
+			//discard; 
 	}
 
 	vec3 diffuseColor = vec3(texture(material.diffuse[0], texCoords));
@@ -483,7 +486,90 @@ float PointLightShadowCalculation(vec3 normal, vec3 lightDir, int lightId)
 
 vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 { 
-    float height =  texture(material.height[0], texCoords).r;    
-    vec2 p = viewDir.xy / viewDir.z * (height * height_scale);
-    return texCoords - p;    
+	//Steep Parallax Mapping
+
+	const float minLayers = 8.0;
+	const float maxLayers = 32.0;
+	float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDir)));
+
+	
+    float layerDepth = 1.0 / numLayers;
+   
+    float currentLayerDepth = 0.0;
+    
+    vec2 P = viewDir.xy * height_scale; 
+    vec2 deltaTexCoords = P / numLayers;
+
+	vec2  currentTexCoords     = texCoords;
+	float currentDepthMapValue = texture(material.height[0], currentTexCoords).r;
+  
+	while(currentLayerDepth < currentDepthMapValue)
+	{
+		currentTexCoords -= deltaTexCoords;
+		currentDepthMapValue = texture(material.height[0], currentTexCoords).r;  
+		currentLayerDepth += layerDepth;  
+	}
+
+	//Parallax Occlusion Mapping
+	vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+
+	float afterDepth  = currentDepthMapValue - currentLayerDepth;
+	float beforeDepth = texture(material.height[0], prevTexCoords).r - currentLayerDepth + layerDepth;
+ 
+	float weight = afterDepth / (afterDepth - beforeDepth);
+	vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+
+	return finalTexCoords;    
+}
+
+//inTexCoords - original tex coords 
+//inViewDir - vector directed to viewer in tangent space
+//out lastDepthValue - depth in found cross point
+//function returns changed texture coords
+
+vec2 reliefPM(vec2 inTexCoords, vec3 inViewDir, out float lastDepthValue) 
+{
+	//Steep Parallax Mapping
+
+	const float _minLayers = 2.;
+	const float _maxLayers = 32.;
+	float _numLayers = mix(_maxLayers, _minLayers, abs(dot(vec3(0., 0., 1.), inViewDir)));
+
+	float deltaDepth = 1./_numLayers;
+	vec2 deltaTexcoord = height_scale * inViewDir.xy/(inViewDir.z * _numLayers);
+
+	vec2 currentTexCoords = inTexCoords;
+	float currentLayerDepth = 0.;
+	float currentDepthValue = texture(material.height[0], currentTexCoords).r;
+	while (currentDepthValue > currentLayerDepth) {
+		currentLayerDepth += deltaDepth;
+		currentTexCoords -= deltaTexcoord;
+		currentDepthValue = texture(material.height[0], currentTexCoords).r;;
+	}
+
+	// Relief PM 
+	deltaTexcoord *= 0.5;
+	deltaDepth *= 0.5;
+	currentTexCoords += deltaTexcoord;
+	currentLayerDepth -= deltaDepth;
+
+	const int _reliefSteps = 5;
+	int currentStep = _reliefSteps;
+	while (currentStep > 0) {
+		currentDepthValue = texture(material.height[0], currentTexCoords).r;
+		deltaTexcoord *= 0.5;
+		deltaDepth *= 0.5;
+		if (currentDepthValue > currentLayerDepth) {
+			currentTexCoords -= deltaTexcoord;
+			currentLayerDepth += deltaDepth;
+		}
+		else {
+			currentTexCoords += deltaTexcoord;
+			currentLayerDepth -= deltaDepth;
+		}
+		currentStep--;
+	}
+
+	lastDepthValue = currentDepthValue;
+	return currentTexCoords;
 }
