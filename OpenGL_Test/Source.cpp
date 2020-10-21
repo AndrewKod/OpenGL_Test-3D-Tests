@@ -128,6 +128,7 @@ struct Settings
 
 	GLint bShadows =				false;//O
 	GLint bUseNormalMap =			false;//M
+	GLint bUseParallaxMapping =		false;//B
 
 	GLint bShowDirLightDepthMap =	false;//L Draw depth map on post process rectangle
 
@@ -150,6 +151,7 @@ struct Settings
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bSpotLight),				sizeof(GLint), &bSpotLight);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShadows),				sizeof(GLint), &bShadows);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bUseNormalMap),			sizeof(GLint), &bUseNormalMap);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bUseParallaxMapping),		sizeof(GLint), &bUseParallaxMapping);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 }
@@ -292,13 +294,13 @@ void FillModelMatrices(std::vector<glm::mat4>& cubeModelMatrices);
 void DrawCubes(Shader & shader, GLuint VAO,
 	const std::vector<glm::mat4>& cubeModelMatrices, const std::vector<GLuint>* pointLightDepthCubemaps = nullptr,
 	GLuint diffTexture = 0, GLuint specTexture = 0,
-	GLuint wallTexture = 0, GLuint wallNormalMap = 0,
+	GLuint wallTexture = 0, GLuint wallNormalMap = 0, GLuint wallHeightMap = 0,
 	GLuint dirLightDepthMapTex = 0,
 	glm::vec3 scale = glm::vec3(1.0f), bool bStencil = false, glm::vec4 borderColor = glm::vec4(0.f)
 	);
 void DrawFloor(Shader & shader, GLuint VAO,
 	GLuint diffTexture = 0, GLuint specTexture = 0,
-	GLuint wallTexture = 0, GLuint wallNormalMap = 0,
+	GLuint wallTexture = 0, GLuint wallNormalMap = 0, GLuint wallHeightMap = 0,
 	GLuint dirLightDepthMapTex = 0,
 	const std::vector<GLuint>* pointLightDepthCubemaps = nullptr);
 
@@ -309,7 +311,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
 	GLuint cubeDiffTexture, GLuint cubeSpecTexture,
 	GLuint floorTexture, GLuint cubemapTexture,
-	GLuint wallTexture, GLuint wallNormalMap,
+	GLuint wallTexture, GLuint wallNormalMap, GLuint wallHeightMap,
 	GLuint dirLightDepthMapTex, const std::vector<GLuint>* pointLightDepthCubemaps);
 
 void DrawPostProc(Shader & shader, GLuint VAO,
@@ -591,9 +593,11 @@ int main()
 	GLuint cubeTexture = loadTexture("Textures/container2.png", bLoadSRGB);
 	GLuint cubeSpecTexture = loadTexture("Textures/container2_specular.png");
 	GLuint floorTexture = loadTexture("Textures/container.jpg", bLoadSRGB);
-	GLuint wallTexture = loadTexture("Textures/brickwall.jpg", bLoadSRGB);
-	GLuint wallNormalMap = loadTexture("Textures/brickwall_normal.jpg");
-
+	//GLuint wallTexture = loadTexture("Textures/brickwall.jpg", bLoadSRGB);
+	//GLuint wallNormalMap = loadTexture("Textures/brickwall_normal.jpg");
+	GLuint wallTexture = loadTexture("Textures/bricks2.jpg", bLoadSRGB);
+	GLuint wallNormalMap = loadTexture("Textures/bricks2_normal.jpg");
+	GLuint wallHeightMap = loadTexture("Textures/bricks2_disp.jpg");
     // shader configuration
     // --------------------
     shader.UseProgram();
@@ -818,7 +822,7 @@ int main()
 		DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
 			cubeTexture, cubeSpecTexture,
 			floorTexture, cubemapTexture,
-			wallTexture, wallNormalMap,
+			wallTexture, wallNormalMap, wallHeightMap,
 			dirLightDepthMapTexID,
 			pointLightDepthCubemapsPtr);
 
@@ -835,7 +839,7 @@ int main()
 		DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
 			cubeTexture, cubeSpecTexture,
 			floorTexture, cubemapTexture,
-			wallTexture, wallNormalMap,
+			wallTexture, wallNormalMap, wallHeightMap,
 			dirLightDepthMapTexID,
 			pointLightDepthCubemapsPtr);
 
@@ -957,7 +961,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	GLuint planeVAO, GLuint skyboxVAO, GLuint uboBlock,
 	GLuint cubeDiffTexture, GLuint cubeSpecTexture,
 	GLuint floorTexture, GLuint cubemapTexture,
-	GLuint wallTexture, GLuint wallNormalMap,
+	GLuint wallTexture, GLuint wallNormalMap, GLuint wallHeightMap,
 	GLuint dirLightDepthMapTex, const std::vector<GLuint>* pointLightDepthCubemaps)
 {
 	
@@ -996,7 +1000,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	DrawCubes(shader, cubeVAO,
 		cubeModelMatrices, pointLightDepthCubemaps,
 		cubeDiffTexture, cubeSpecTexture,
-		wallTexture, wallNormalMap, 
+		wallTexture, wallNormalMap, wallHeightMap,
 		dirLightDepthMapTex);
 
 	// 2nd. render pass: now draw slightly scaled versions of the objects, this time disabling stencil writing.
@@ -1013,7 +1017,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	// cubes for borders
 	DrawCubes(shader, cubeVAO,
 		cubeModelMatrices, nullptr,
-		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
 		glm::vec3(scale), true, borderColor);
 
 	
@@ -1030,7 +1034,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	// floor
 	DrawFloor(shader, planeVAO,
 		floorTexture, cubeSpecTexture,
-		wallTexture, wallNormalMap,
+		wallTexture, wallNormalMap, wallHeightMap,
 		dirLightDepthMapTex, pointLightDepthCubemaps);
 
 	glStencilMask(0xFF);
@@ -1215,6 +1219,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_M && action == GLFW_PRESS)
 	{
 		settings.bUseNormalMap = !settings.bUseNormalMap;
+		if (!settings.bUseNormalMap)
+			settings.bUseParallaxMapping = false;
+
+		settings.UpdateSettings();
+	}
+
+	if (key == GLFW_KEY_B && action == GLFW_PRESS)
+	{
+		settings.bUseParallaxMapping = !settings.bUseParallaxMapping;
+		if (settings.bUseParallaxMapping)
+			settings.bUseNormalMap = true;
 
 		settings.UpdateSettings();
 	}
@@ -1312,7 +1327,7 @@ unsigned int loadTexture(char const * path, bool bSRGB)
 void DrawCubes(Shader & shader, GLuint VAO,
 	const std::vector<glm::mat4>& cubeModelMatrices, const std::vector<GLuint>* pointLightDepthCubemaps,
 	GLuint diffTexture, GLuint specTexture,
-	GLuint wallTexture, GLuint wallNormalMap,
+	GLuint wallTexture, GLuint wallNormalMap, GLuint wallHeightMap,
 	GLuint dirLightDepthMapTex,
 	glm::vec3 scale, bool bStencil, glm::vec4 borderColor)
 {
@@ -1324,7 +1339,7 @@ void DrawCubes(Shader & shader, GLuint VAO,
 	glBindVertexArray(VAO);
 
 	GLuint texCount = 0;
-	if (settings.bUseNormalMap)
+	if (settings.bUseNormalMap || settings.bUseParallaxMapping)
 	{
 		if (wallTexture != 0)
 		{
@@ -1341,6 +1356,15 @@ void DrawCubes(Shader & shader, GLuint VAO,
 			shader.SetInt("material.normal[0]", texCount);
 			//shader.SetInt("material.specular[0]", 0);
 			shader.SetBool("bHasNormalMap", true);
+			texCount++;
+		}
+
+		if (wallHeightMap != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, wallHeightMap);
+			shader.SetInt("material.height[0]", texCount);
+			shader.SetBool("bHasHeightMap", true);
 			texCount++;
 		}
 	}
@@ -1399,11 +1423,12 @@ void DrawCubes(Shader & shader, GLuint VAO,
 
 	shader.SetBool("bStencil", false);
 	shader.SetBool("bHasNormalMap", false);
+	shader.SetBool("bHasHeightMap", false);
 }
 
 void DrawFloor(Shader & shader, GLuint VAO,
 	GLuint diffTexture, GLuint specTexture,
-	GLuint wallTexture, GLuint wallNormalMap,
+	GLuint wallTexture, GLuint wallNormalMap, GLuint wallHeightMap,
 	GLuint dirLightDepthMapTex,
 	const std::vector<GLuint>* pointLightDepthCubemaps)
 {
@@ -1414,7 +1439,7 @@ void DrawFloor(Shader & shader, GLuint VAO,
 	glBindVertexArray(VAO);
 
 	GLuint texCount = 0;
-	if (settings.bUseNormalMap)
+	if (settings.bUseNormalMap || settings.bUseParallaxMapping)
 	{
 		if (wallTexture != 0)
 		{
@@ -1431,6 +1456,15 @@ void DrawFloor(Shader & shader, GLuint VAO,
 			shader.SetInt("material.normal[0]", texCount);
 			//shader.SetInt("material.specular[0]", 0);
 			shader.SetBool("bHasNormalMap", true);
+			texCount++;
+		}
+
+		if (wallHeightMap != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + texCount);
+			glBindTexture(GL_TEXTURE_2D, wallHeightMap);
+			shader.SetInt("material.height[0]", texCount);
+			shader.SetBool("bHasHeightMap", true);
 			texCount++;
 		}
 	}
@@ -1483,6 +1517,7 @@ void DrawFloor(Shader & shader, GLuint VAO,
 	glBindVertexArray(0);
 
 	shader.SetBool("bHasNormalMap", false);
+	shader.SetBool("bHasHeightMap", false);
 }
 
 void SetKernelValue(Shader & postProcShader, GLint cellID)

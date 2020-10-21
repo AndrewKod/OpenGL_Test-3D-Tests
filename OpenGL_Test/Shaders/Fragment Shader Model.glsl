@@ -10,6 +10,7 @@ struct Material {
 	sampler2D emissive[NUM_TEXTURE_MAPS];
 	sampler2D reflection[NUM_TEXTURE_MAPS];
 	sampler2D normal[NUM_TEXTURE_MAPS];
+	sampler2D height[NUM_TEXTURE_MAPS];
     float shininess;
 }; 
   
@@ -122,6 +123,8 @@ layout (std140) uniform Settings
 	bool bShadows;
 
 	bool bUseNormalMap;
+
+	bool bUseParallaxMapping;
 };
 
 
@@ -157,11 +160,26 @@ vec3 sampleOffsetDirections[20] = vec3[]
    vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
 );   
 
+//Normal Mapping
 uniform bool bHasNormalMap = false;
+
+//Parallax Mapping
+uniform bool bHasHeightMap = false;
+uniform float height_scale = 0.1;
+vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir);
 
 void main()
 {   
 	vec2 texCoords = vec2(fs_in.TexCoords.x, binvertUVs ? 1.0 - fs_in.TexCoords.y : fs_in.TexCoords.y);
+
+	if(bUseParallaxMapping && bHasHeightMap)
+	{
+		vec3 viewDir   = normalize(fs_in.tanCameraPos - fs_in.tanFragPos);
+		texCoords = ParallaxMapping(texCoords,  viewDir);
+		if(texCoords.x > 1.0 || texCoords.y > 1.0 || texCoords.x < 0.0 || texCoords.y < 0.0)
+		discard; 
+	}
+
 	vec3 diffuseColor = vec3(texture(material.diffuse[0], texCoords));
 	
 
@@ -461,4 +479,11 @@ float PointLightShadowCalculation(vec3 normal, vec3 lightDir, int lightId)
     //float shadow = currentDepth -  bias > closestDepth ? 1.0 : 0.0;
 
     return shadow;
+}
+
+vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
+{ 
+    float height =  texture(material.height[0], texCoords).r;    
+    vec2 p = viewDir.xy / viewDir.z * (height * height_scale);
+    return texCoords - p;    
 }

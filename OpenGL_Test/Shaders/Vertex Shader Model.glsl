@@ -39,6 +39,8 @@ layout (std140) uniform Settings
 	bool bShadows;
 	
 	bool bUseNormalMap;
+
+	bool bUseParallaxMapping;
 };
 
 layout (std140) uniform Matrices
