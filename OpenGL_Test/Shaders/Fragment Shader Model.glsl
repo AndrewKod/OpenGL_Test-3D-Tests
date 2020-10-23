@@ -169,6 +169,8 @@ uniform float height_scale = 0.1;
 vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir);
 vec2 reliefPM(vec2 inTexCoords, vec3 inViewDir, out float lastDepthValue);
 
+uniform bool bHDR = false;
+
 void main()
 {   
 	vec2 texCoords = vec2(fs_in.TexCoords.x, binvertUVs ? 1.0 - fs_in.TexCoords.y : fs_in.TexCoords.y);
@@ -348,10 +350,21 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 	// calculate shadow
 	if(bShadows)
 		shadow = PointLightShadowCalculation(normal, pointLightDir, lightId);
-
+		
     // комбинируем результаты
     vec3 ambient  = vec3(pointLights[lightId].ambient)  * diffuseColor;
-    vec3 diffuse  = vec3(pointLights[lightId].diffuse)  * diff * diffuseColor * (1.0 - shadow);
+	//clamp diffuse for HDR
+	vec3 originDiff = vec3(0.0);
+	if(bHDR)
+	{
+		originDiff = vec3(pointLights[lightId].diffuse);
+	}
+	else
+	{
+		originDiff = vec3(clamp(pointLights[lightId].diffuse, vec4(0.0), vec4(1.0)));
+	}
+
+    vec3 diffuse  = originDiff * diff * diffuseColor * (1.0 - shadow);
     vec3 specular = vec3(pointLights[lightId].specular) * spec * specularColor * (1.0 - shadow);
     ambient  *= attenuation;
     diffuse  *= attenuation;

@@ -129,6 +129,7 @@ struct Settings
 	GLint bShadows =				false;//O
 	GLint bUseNormalMap =			false;//M
 	GLint bUseParallaxMapping =		false;//B
+	GLint bHDR =					false;//H
 
 	GLint bShowDirLightDepthMap =	false;//L Draw depth map on post process rectangle
 
@@ -152,6 +153,7 @@ struct Settings
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShadows),				sizeof(GLint), &bShadows);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bUseNormalMap),			sizeof(GLint), &bUseNormalMap);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bUseParallaxMapping),		sizeof(GLint), &bUseParallaxMapping);
+		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bHDR),					sizeof(GLint), &bHDR);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 }
@@ -368,6 +370,11 @@ void DrawSceneForPointShadows(Shader & pointLightDepthShader, const std::vector<
 
 void SetShaderValues(Shader & pointLightDepthShader, GLuint pointLightID);
 
+////////////////////////////////////////HDR///////////////////////////////////////////
+void SetupHDRFrameBuffer(GLuint& framebuffer, GLuint& colorBuffer, GLuint& renderBuffer);
+void DrawHDR(Shader & HDR_Shader, GLuint postProcVAO,
+	GLuint HDR_Texture);
+
 struct LightSpaceMatrices
 {
 	glm::mat4 dirLightSpaceMatrix;
@@ -463,6 +470,8 @@ int main()
 
 	Shader pointLightDepthShader("Shaders/Point Light Depth VS.glsl", "Shaders/Point Light Depth FS.glsl",
 		"Shaders/Point Light Depth GS.glsl");
+
+	Shader HDR_Shader("Shaders/Vertex Shader PP.glsl", "Shaders/HDR FS.glsl");
 	
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
@@ -752,6 +761,20 @@ int main()
 	shader.SetFloat("far_plane", farPlane);
 
 	
+	//////////////////////////////////////////HDR////////////////////////////////////////
+
+	GLuint HDR_FBO = 0;
+	//color attachment texture
+	GLuint HDR_Texture = 0;
+	//depth, stencil attachment texture
+	GLuint HDR_RenderBuffer = 0;
+
+	//Setup Frame Buffer	
+	SetupHDRFrameBuffer(HDR_FBO, HDR_Texture, HDR_RenderBuffer);
+
+	HDR_Shader.UseProgram();
+	HDR_Shader.SetMat4("model", postProcModel);
+
 
 	/////////////model matrices for cubes drawing/////////////////
 	std::vector<glm::mat4> cubeModelMatrices;
@@ -857,6 +880,30 @@ int main()
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
+		/////////////////////////////////////HDR///////////////////////////////////
+		if (settings.bHDR)
+		{
+			shader.UseProgram();
+			shader.SetBool("bHDR", true);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, HDR_FBO);
+
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+			DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
+				cubeTexture, cubeSpecTexture,
+				floorTexture, cubemapTexture,
+				wallTexture, wallNormalMap, wallHeightMap,
+				dirLightDepthMapTexID,
+				pointLightDepthCubemapsPtr);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			shader.UseProgram();
+			shader.SetBool("bHDR", false);
+		}
+		///////////////////////////////////////////////////////////////////////////
+
 		DrawReflectCube(shader, cubeVAO, cubemapTexture, cubeTexture, cubeSpecTexture, camera.Position);
 
 		DrawRefractCube(shader, cubeVAO, cubemapTexture, camera.Position);
@@ -904,8 +951,16 @@ int main()
 		postProcShader.SetBool("bAntiAliasing", settings.bAntiAliasing);
 		postProcShader.SetBool("bBlit", settings.bBlit);
 
+		//Show scene with HDR
+		if (settings.bHDR)
+		{
+			HDR_Shader.UseProgram();
+			HDR_Shader.SetFloat("exposure", 0.01f);
+
+			DrawHDR(HDR_Shader, postProcVAO, HDR_Texture);
+		}
 		//show depth texture
-		if (settings.bShadows && settings.bDirectionalLight && settings.bShowDirLightDepthMap)
+		else if (settings.bShadows && settings.bDirectionalLight && settings.bShowDirLightDepthMap)
 			DrawPostProc(postProcShader, postProcVAO, dirLightDepthMapTex, textureColorbufferMS, screenBlitTexture);		
 		else
 			DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
@@ -1230,6 +1285,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		settings.bUseParallaxMapping = !settings.bUseParallaxMapping;
 		if (settings.bUseParallaxMapping)
 			settings.bUseNormalMap = true;
+
+		settings.UpdateSettings();
+	}
+
+	if (key == GLFW_KEY_H && action == GLFW_PRESS)
+	{
+		settings.bHDR = !settings.bHDR;		
 
 		settings.UpdateSettings();
 	}
@@ -1639,6 +1701,30 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
 
 	}
 
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glBindVertexArray(0);
+}
+
+void DrawHDR(Shader & HDR_Shader, GLuint postProcVAO,
+	GLuint HDR_Texture)
+{
+	HDR_Shader.UseProgram();
+
+	if (bPPModelChanged)
+	{
+		HDR_Shader.SetMat4("model", postProcModel);
+		bPPModelChanged = false;
+	}
+
+	glBindVertexArray(postProcVAO);
+
+	glActiveTexture(GL_TEXTURE0);
+	
+	glBindTexture(GL_TEXTURE_2D, HDR_Texture);	// use the color attachment texture as the texture of the quad plane
+	
+	HDR_Shader.SetInt("screenTexture", 0);
+	
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glBindVertexArray(0);
@@ -2242,7 +2328,8 @@ void AddPointLights(std::vector<PointLight>& pointLights)
 		PointLight(
 			glm::vec4(1.2f, 1.0f, 2.0f, 0.0f),
 			glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
-			glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+			//glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+			glm::vec4(200.0f, 200.0f, 200.0f, 200.0f),
 			glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
 	pointLights.push_back(
 		PointLight(
@@ -2545,5 +2632,35 @@ void DrawSceneForPointShadows(Shader & pointLightDepthShader,
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
+
+}
+
+
+void SetupHDRFrameBuffer(GLuint& framebuffer, GLuint& colorBuffer, GLuint& renderBuffer)
+{
+	glGenFramebuffers(1, &framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+	glGenTextures(1, &colorBuffer);
+	glBindTexture(GL_TEXTURE_2D, colorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
+	//glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+	// create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+	//GLuint rbo;
+	glGenRenderbuffers(1, &renderBuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, renderBuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBuffer); // now actually attach it
+
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		cout << "ERROR::FRAMEBUFFER::" << Status << endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 }

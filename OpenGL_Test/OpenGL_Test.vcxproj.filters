@@ -77,6 +77,9 @@
     <None Include="Shaders\Point Light Depth FS.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\HDR FS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
