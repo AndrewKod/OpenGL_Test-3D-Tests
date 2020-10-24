@@ -129,7 +129,10 @@ struct Settings
 	GLint bShadows =				false;//O
 	GLint bUseNormalMap =			false;//M
 	GLint bUseParallaxMapping =		false;//B
-	GLint bHDR =					false;//H
+
+
+	GLint bHDR =					false;//H excluded from settingsUBO
+	GLint bBloom =					false;//G excluded from settingsUBO
 
 	GLint bShowDirLightDepthMap =	false;//L Draw depth map on post process rectangle
 
@@ -153,7 +156,6 @@ struct Settings
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bShadows),				sizeof(GLint), &bShadows);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bUseNormalMap),			sizeof(GLint), &bUseNormalMap);
 		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bUseParallaxMapping),		sizeof(GLint), &bUseParallaxMapping);
-		glBufferSubData(GL_UNIFORM_BUFFER, offsetof(Settings, bHDR),					sizeof(GLint), &bHDR);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 }
@@ -339,13 +341,17 @@ void FillModelMatrices(GLuint amount, glm::mat4 *modelMatrices);
 void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices, GLuint& modelMatricesVBO);
 
 void AddDirectedLight();
-void AddPointLights(std::vector<PointLight>& pointLights);
+void AddPointLights(std::vector<PointLight>& pointLights, std::vector<glm::mat4>& pointLightsModelMatrices);
 void AddSpotLight();
 
 void UpdateSpotLight();
 void UpdatePointLights(std::vector<PointLight>& pointLights,
+	std::vector<glm::mat4>& pointLightsModelMatrices,
 	Shader& lampShader, GLuint lampVAO);
 
+void DrawPointLights(std::vector<PointLight>& pointLights,
+	std::vector<glm::mat4>& pointLightsModelMatrices,
+	Shader& lampShader, GLuint lampVAO);
 
 //////////////////////////////////////////SHADOWS//////////////////////////////////////////
 
@@ -371,9 +377,9 @@ void DrawSceneForPointShadows(Shader & pointLightDepthShader, const std::vector<
 void SetShaderValues(Shader & pointLightDepthShader, GLuint pointLightID);
 
 ////////////////////////////////////////HDR///////////////////////////////////////////
-void SetupHDRFrameBuffer(GLuint& framebuffer, GLuint& colorBuffer, GLuint& renderBuffer);
+void SetupHDRFrameBuffer(GLuint& framebuffer, GLuint colorBuffers[], GLuint& renderBuffer);
 void DrawHDR(Shader & HDR_Shader, GLuint postProcVAO,
-	GLuint HDR_Texture);
+	GLuint colorBuffers[]);
 
 struct LightSpaceMatrices
 {
@@ -516,6 +522,8 @@ int main()
 	skyboxShader.BindUniformBuffer("Settings", 1);
 
 	skullShader.BindUniformBuffer("Settings", 1);
+
+	HDR_Shader.BindUniformBuffer("Settings", 1);
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/////////////////////////////////////LIGHTS UNIFORM BUFFER////////////////////////////////////	
@@ -712,10 +720,11 @@ int main()
 	///////////////////////////////////////LIGHTS////////////////////////////////////
 		
 	std::vector<PointLight> pointLights;
-	
+	std::vector<glm::mat4> pointLightsModelMatrices;
+
 	AddDirectedLight();
 
-	AddPointLights(pointLights);
+	AddPointLights(pointLights, pointLightsModelMatrices);
 
 	AddSpotLight();
 
@@ -761,19 +770,24 @@ int main()
 	shader.SetFloat("far_plane", farPlane);
 
 	
-	//////////////////////////////////////////HDR////////////////////////////////////////
+	////////////////////////////////////////// HDR & BLOOM ////////////////////////////////////////
 
 	GLuint HDR_FBO = 0;
 	//color attachment texture
-	GLuint HDR_Texture = 0;
+	GLuint colorBuffers[2];
 	//depth, stencil attachment texture
 	GLuint HDR_RenderBuffer = 0;
 
 	//Setup Frame Buffer	
-	SetupHDRFrameBuffer(HDR_FBO, HDR_Texture, HDR_RenderBuffer);
+	SetupHDRFrameBuffer(HDR_FBO, colorBuffers, HDR_RenderBuffer);
 
 	HDR_Shader.UseProgram();
 	HDR_Shader.SetMat4("model", postProcModel);
+
+	GLuint pingpongFBOs[2];
+	GLuint pingpongColors[2];
+
+	SetupPingPongFBOs(pingpongFBOs, pingpongColors);
 
 
 	/////////////model matrices for cubes drawing/////////////////
@@ -866,6 +880,10 @@ int main()
 			dirLightDepthMapTexID,
 			pointLightDepthCubemapsPtr);
 
+		if (settings.bPointLights)
+			DrawPointLights(pointLights, pointLightsModelMatrices,
+				shader, cubeVAO);
+
 		// now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
 		if (settings.bAntiAliasing)
 		{
@@ -885,10 +903,12 @@ int main()
 		{
 			shader.UseProgram();
 			shader.SetBool("bHDR", true);
+			if(settings.bBloom)
+				shader.SetBool("bBloom", true);
 
 			glBindFramebuffer(GL_FRAMEBUFFER, HDR_FBO);
 
-			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 			DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
 				cubeTexture, cubeSpecTexture,
@@ -897,10 +917,15 @@ int main()
 				dirLightDepthMapTexID,
 				pointLightDepthCubemapsPtr);
 
+			if (settings.bPointLights)
+				DrawPointLights(pointLights, pointLightsModelMatrices,
+					shader, cubeVAO);
+
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 			shader.UseProgram();
 			shader.SetBool("bHDR", false);
+			shader.SetBool("bBloom", false);
 		}
 		///////////////////////////////////////////////////////////////////////////
 
@@ -955,9 +980,9 @@ int main()
 		if (settings.bHDR)
 		{
 			HDR_Shader.UseProgram();
-			HDR_Shader.SetFloat("exposure", 0.01f);
+			HDR_Shader.SetFloat("exposure", 0.5f);
 
-			DrawHDR(HDR_Shader, postProcVAO, HDR_Texture);
+			DrawHDR(HDR_Shader, postProcVAO, colorBuffers);
 		}
 		//show depth texture
 		else if (settings.bShadows && settings.bDirectionalLight && settings.bShowDirLightDepthMap)
@@ -968,7 +993,7 @@ int main()
 
 		//////////////////////////////////////LIGHTS//////////////////////////////////
 		if (settings.bPointLights)
-			UpdatePointLights(pointLights, shader, cubeVAO);
+			UpdatePointLights(pointLights, pointLightsModelMatrices, shader, cubeVAO);
 
 		if (settings.bSpotLight)
 			UpdateSpotLight();
@@ -1292,6 +1317,16 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_H && action == GLFW_PRESS)
 	{
 		settings.bHDR = !settings.bHDR;		
+		if (!settings.bHDR)
+			settings.bBloom = false;
+
+		settings.UpdateSettings();
+	}
+	if (key == GLFW_KEY_G && action == GLFW_PRESS)
+	{
+		settings.bBloom = !settings.bBloom;
+		if (settings.bBloom)
+			settings.bHDR = true;
 
 		settings.UpdateSettings();
 	}
@@ -1707,7 +1742,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
 }
 
 void DrawHDR(Shader & HDR_Shader, GLuint postProcVAO,
-	GLuint HDR_Texture)
+	GLuint colorBuffers[])
 {
 	HDR_Shader.UseProgram();
 
@@ -1721,7 +1756,7 @@ void DrawHDR(Shader & HDR_Shader, GLuint postProcVAO,
 
 	glActiveTexture(GL_TEXTURE0);
 	
-	glBindTexture(GL_TEXTURE_2D, HDR_Texture);	// use the color attachment texture as the texture of the quad plane
+	glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);	// use the color attachment texture as the texture of the quad plane
 	
 	HDR_Shader.SetInt("screenTexture", 0);
 	
@@ -2322,14 +2357,14 @@ void AddDirectedLight()
 	lights.UpdateLights();
 }
 
-void AddPointLights(std::vector<PointLight>& pointLights)
+void AddPointLights(std::vector<PointLight>& pointLights, std::vector<glm::mat4>& pointLightsModelMatrices)
 {
 	pointLights.push_back(
 		PointLight(
 			glm::vec4(1.2f, 1.0f, 2.0f, 0.0f),
 			glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
-			//glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-			glm::vec4(200.0f, 200.0f, 200.0f, 200.0f),
+			glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+			//glm::vec4(20.0f, 20.0f, 20.0f, 20.0f),
 			glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
 	pointLights.push_back(
 		PointLight(
@@ -2341,7 +2376,7 @@ void AddPointLights(std::vector<PointLight>& pointLights)
 		PointLight(
 			glm::vec4(-2.0f, 2.0f, -2.0f, 0.0f),
 			glm::vec4(0.0f, 0.1f, 0.0f, 1.0f),
-			glm::vec4(0.0f, 1.0f, 0.0f, 1.0f),
+			glm::vec4(0.0f, 10.0f, 0.0f, 1.0f),
 			glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)));
 	pointLights.push_back(
 		PointLight(
@@ -2353,6 +2388,7 @@ void AddPointLights(std::vector<PointLight>& pointLights)
 	for (GLint i = 0; i < pointLights.size(); i++)
 	{
 		lights.pointLights[i] = pointLights[i];
+		pointLightsModelMatrices.push_back(glm::mat4());
 	}
 
 	lights.UpdateLights();
@@ -2378,6 +2414,7 @@ void UpdateSpotLight()
 }
 
 void UpdatePointLights(std::vector<PointLight>& pointLights,
+	std::vector<glm::mat4>& pointLightsModelMatrices,
 	Shader& lampShader, GLuint lampVAO)
 {
 
@@ -2399,6 +2436,27 @@ void UpdatePointLights(std::vector<PointLight>& pointLights,
 		model = glm::translate(model, lampPosition);
 		model = glm::scale(model, glm::vec3(0.2f));
 		
+		pointLightsModelMatrices[lightId] = model;		
+
+		//Set light position
+		lights.pointLights[lightId].position = transLightPos;
+	}
+
+	lights.UpdateLights();
+
+	DrawPointLights(pointLights, pointLightsModelMatrices,
+		lampShader, lampVAO);
+}
+
+void DrawPointLights(std::vector<PointLight>& pointLights, 
+	std::vector<glm::mat4>& pointLightsModelMatrices,
+	Shader& lampShader, GLuint lampVAO)
+{
+	for (int lightId = 0; lightId < pointLights.size(); lightId++)
+	{
+		glm::mat4 model = pointLightsModelMatrices[lightId];
+		
+
 
 		//Draw Lamp
 		lampShader.UseProgram();
@@ -2406,20 +2464,15 @@ void UpdatePointLights(std::vector<PointLight>& pointLights,
 		lampShader.SetMat4("model", model);
 		lampShader.SetBool("bStencil", true);
 		glm::vec4 lampColor = glm::vec4(pointLights[lightId].diffuse/*, 1.0*/);
-		lampShader.SetVec4("borderColor", lampColor);		
+		lampShader.SetVec4("borderColor", lampColor);
 
 
 		glBindVertexArray(lampVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
 
-		lampShader.SetBool("bStencil", false);
-
-		//Set light position
-		lights.pointLights[lightId].position = transLightPos;
+		lampShader.SetBool("bStencil", false);	
 	}
-
-	lights.UpdateLights();
 }
 
 GLsizeiptr CalcStructSizeUBO(GLsizeiptr structSize)
@@ -2636,18 +2689,30 @@ void DrawSceneForPointShadows(Shader & pointLightDepthShader,
 }
 
 
-void SetupHDRFrameBuffer(GLuint& framebuffer, GLuint& colorBuffer, GLuint& renderBuffer)
+void SetupHDRFrameBuffer(GLuint& framebuffer, GLuint colorBuffers[], GLuint& renderBuffer)
 {
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 
-	glGenTextures(1, &colorBuffer);
-	glBindTexture(GL_TEXTURE_2D, colorBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
-	//glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	glGenTextures(2, colorBuffers);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
+		glTexImage2D(
+			GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL
+		);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		// присоединение текстуры к фреймбуферу
+		glFramebufferTexture2D(
+			GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0
+		);
+	}
+
+	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);	
 
 	// create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
 	//GLuint rbo;
@@ -2662,5 +2727,36 @@ void SetupHDRFrameBuffer(GLuint& framebuffer, GLuint& colorBuffer, GLuint& rende
 		cout << "ERROR::FRAMEBUFFER::" << Status << endl;
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+}
+
+void SetupPingPongFBOs(GLuint pingpongFBOs[], GLuint pingpongColors[])
+{
+	glGenFramebuffers(2, pingpongFBOs);
+	glGenTextures(2, pingpongColors);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBOs[i]);
+		glBindTexture(GL_TEXTURE_2D, pingpongColors[i]);
+		glTexImage2D(
+			GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL
+		);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(
+			GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColors[i], 0
+		);		
+		
+		GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+		if (Status != GL_FRAMEBUFFER_COMPLETE) {
+			cout << "ERROR::FRAMEBUFFER::Ping-Pong[" << i << "]::" << Status << endl;
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	
 
 }

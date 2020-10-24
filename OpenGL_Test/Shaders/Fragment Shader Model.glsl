@@ -1,7 +1,9 @@
 #version 330 core
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
 
 #define NUM_TEXTURE_MAPS 16
-#define NUM_POINT_LIGHTS 16
+#define NUM_POINT_LIGHTS 16 
 
 struct Material {
     /*vec3 ambient;*//*ambient in most of cases matches with diffuse*/
@@ -73,7 +75,6 @@ uniform bool bBlinn = true;//Blinn-Phong light model
 
 ///////////////////////NEW///////////////////////
 
-out vec4 FragColor;
 
 in GS_OUT {
     vec2 TexCoords;
@@ -170,6 +171,7 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir);
 vec2 reliefPM(vec2 inTexCoords, vec3 inViewDir, out float lastDepthValue);
 
 uniform bool bHDR = false;
+uniform bool bBloom = false;
 
 void main()
 {   
@@ -266,6 +268,15 @@ void main()
 		col = pow(col, vec4(1.0/gamma));
 	}
 	FragColor = col;
+
+	if(bBloom)
+	{
+		float brightness = dot(FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+		if(brightness > 1.0)
+			BrightColor = vec4(FragColor.rgb, 1.0);
+		else
+			BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
+	}
 }
 
 float LinearizeDepth(float depth) 

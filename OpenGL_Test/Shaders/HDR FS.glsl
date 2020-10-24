@@ -6,6 +6,11 @@ in vec2 TexCoords;
 uniform sampler2D screenTexture;//hdrBuffer
 uniform float exposure;
 
+layout (std140) uniform Settings
+{
+	bool bGammaCorrection;       
+};
+
 void main()
 {
 	gl_FragDepth = 0.0;
@@ -15,6 +20,12 @@ void main()
 
     vec3 mapped = vec3(1.0) - exp(-hdrColor * exposure);
     mapped = pow(mapped, vec3(1.0 / gamma));
+
+	if(bGammaCorrection)
+	{
+		float gamma = 2.2;
+		mapped = pow(mapped, vec3(1.0 / gamma));
+	}
 
     FragColor = vec4(mapped, 1.0);
 	//FragColor = texture(screenTexture, TexCoords);
