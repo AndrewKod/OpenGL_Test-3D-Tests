@@ -114,7 +114,7 @@ GLuint settingsUBO = 0;
 
 struct Settings
 {
-	GLint bGammaCorrection =		false;//G
+	GLint bGammaCorrection =		false;//F
 	
 	GLint bExplode =				false;//M
 	GLint bPostProcess =			false;//P	
@@ -376,10 +376,15 @@ void DrawSceneForPointShadows(Shader & pointLightDepthShader, const std::vector<
 
 void SetShaderValues(Shader & pointLightDepthShader, GLuint pointLightID);
 
-////////////////////////////////////////HDR///////////////////////////////////////////
+////////////////////////////////////////HDR & BLOOM///////////////////////////////////////////
 void SetupHDRFrameBuffer(GLuint& framebuffer, GLuint colorBuffers[], GLuint& renderBuffer);
 void DrawHDR(Shader & HDR_Shader, GLuint postProcVAO,
-	GLuint colorBuffers[]);
+	GLuint colorBuffers[], GLuint pingpongColorsBuffers[]);
+void SetupPingPongFBOs(GLuint pingpongFBOs[], GLuint pingpongColors[]);
+void DrawBlurQuad(Shader & blurShader, GLuint postProcVAO,
+	GLuint colorBuffer);
+void GenScreenQuadVAO(GLuint& screenQuadVAO, GLuint& screenQuadVBO);
+
 
 struct LightSpaceMatrices
 {
@@ -478,6 +483,8 @@ int main()
 		"Shaders/Point Light Depth GS.glsl");
 
 	Shader HDR_Shader("Shaders/Vertex Shader PP.glsl", "Shaders/HDR FS.glsl");
+
+	Shader blurShader("Shaders/Blur VS.glsl", "Shaders/Blur FS.glsl");
 	
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
@@ -774,21 +781,24 @@ int main()
 
 	GLuint HDR_FBO = 0;
 	//color attachment texture
-	GLuint colorBuffers[2];
+	GLuint HDR_ColorBuffers[2];
 	//depth, stencil attachment texture
 	GLuint HDR_RenderBuffer = 0;
 
 	//Setup Frame Buffer	
-	SetupHDRFrameBuffer(HDR_FBO, colorBuffers, HDR_RenderBuffer);
+	SetupHDRFrameBuffer(HDR_FBO, HDR_ColorBuffers, HDR_RenderBuffer);
 
 	HDR_Shader.UseProgram();
 	HDR_Shader.SetMat4("model", postProcModel);
 
 	GLuint pingpongFBOs[2];
-	GLuint pingpongColors[2];
+	GLuint pingpongColorsBuffers[2];
 
-	SetupPingPongFBOs(pingpongFBOs, pingpongColors);
+	SetupPingPongFBOs(pingpongFBOs, pingpongColorsBuffers);
 
+	GLuint screenQuadVAO = 0;
+	GLuint screenQuadVBO = 0;
+	GenScreenQuadVAO(screenQuadVAO, screenQuadVBO);
 
 	/////////////model matrices for cubes drawing/////////////////
 	std::vector<glm::mat4> cubeModelMatrices;
@@ -898,7 +908,7 @@ int main()
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
-		/////////////////////////////////////HDR///////////////////////////////////
+		/////////////////////////////////////HDR & BLOOM///////////////////////////////////
 		if (settings.bHDR)
 		{
 			shader.UseProgram();
@@ -926,6 +936,29 @@ int main()
 			shader.UseProgram();
 			shader.SetBool("bHDR", false);
 			shader.SetBool("bBloom", false);
+
+			if (settings.bBloom)
+			{
+				bool horizontal = true, first_iteration = true;
+				int amount = 10;
+				blurShader.UseProgram();
+				for (unsigned int i = 0; i < amount; i++)
+				{
+					glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBOs[horizontal]);
+					blurShader.SetInt("horizontal", horizontal);
+					/*glBindTexture(
+						GL_TEXTURE_2D, first_iteration ? HDR_ColorBuffers[1] : pingpongColorsBuffers[!horizontal]
+					);*/
+
+					DrawBlurQuad(blurShader, screenQuadVAO,
+						first_iteration ? HDR_ColorBuffers[1] : pingpongColorsBuffers[!horizontal]);
+
+					horizontal = !horizontal;
+					if (first_iteration)
+						first_iteration = false;
+				}
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			}
 		}
 		///////////////////////////////////////////////////////////////////////////
 
@@ -982,7 +1015,7 @@ int main()
 			HDR_Shader.UseProgram();
 			HDR_Shader.SetFloat("exposure", 0.5f);
 
-			DrawHDR(HDR_Shader, postProcVAO, colorBuffers);
+			DrawHDR(HDR_Shader, postProcVAO, HDR_ColorBuffers, pingpongColorsBuffers);
 		}
 		//show depth texture
 		else if (settings.bShadows && settings.bDirectionalLight && settings.bShowDirLightDepthMap)
@@ -1031,6 +1064,9 @@ int main()
 
 	for (int i = 0; i < pointLightFBOs.size(); i++)
 		glDeleteFramebuffers(1, &pointLightFBOs[i]);
+
+	glDeleteVertexArrays(1, &screenQuadVAO);
+	glDeleteBuffers(1, &screenQuadVBO);
 
     glfwTerminate();
     return 0;
@@ -1182,7 +1218,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
 	
 
-	if (key == GLFW_KEY_G && action == GLFW_PRESS)
+	if (key == GLFW_KEY_F && action == GLFW_PRESS)
 	{
 		settings.bGammaCorrection = !settings.bGammaCorrection;
 		settings.UpdateSettings();
@@ -1742,7 +1778,7 @@ void DrawPostProc(Shader & postProcShader, GLuint postProcVAO,
 }
 
 void DrawHDR(Shader & HDR_Shader, GLuint postProcVAO,
-	GLuint colorBuffers[])
+	GLuint colorBuffers[], GLuint pingpongColorsBuffers[])
 {
 	HDR_Shader.UseProgram();
 
@@ -1759,7 +1795,64 @@ void DrawHDR(Shader & HDR_Shader, GLuint postProcVAO,
 	glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);	// use the color attachment texture as the texture of the quad plane
 	
 	HDR_Shader.SetInt("screenTexture", 0);
+
+	if (settings.bBloom)
+	{
+		HDR_Shader.SetBool("bBloom", true);
+
+		glActiveTexture(GL_TEXTURE1);
+
+		glBindTexture(GL_TEXTURE_2D, pingpongColorsBuffers[0]);	// use the color attachment texture as the texture of the quad plane
+
+		HDR_Shader.SetInt("bloomBlur", 1);
+	}
 	
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glBindVertexArray(0);
+
+	HDR_Shader.SetBool("bBloom", false);
+}
+
+void GenScreenQuadVAO(GLuint& screenQuadVAO, GLuint& screenQuadVBO)
+{
+	//have to be written in CW order
+	float screenQuadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+		// positions   // texCoords
+		-1.0f, -1.0f,  0.0f, 0.0f,
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		 1.0f, -1.0f,  1.0f, 0.0f,
+
+		 1.0f, -1.0f,  1.0f, 0.0f,
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		 1.0f,  1.0f,  1.0f, 1.0f
+	};
+
+	glGenVertexArrays(1, &screenQuadVAO);
+	glGenBuffers(1, &screenQuadVBO);
+	glBindVertexArray(screenQuadVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(screenQuadVertices), &screenQuadVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	glBindVertexArray(0);
+}
+
+void DrawBlurQuad(Shader & blurShader, GLuint postProcVAO,
+	GLuint colorBuffer)
+{
+	blurShader.UseProgram();	
+
+	glBindVertexArray(postProcVAO);
+
+	glActiveTexture(GL_TEXTURE0);
+
+	glBindTexture(GL_TEXTURE_2D, colorBuffer);	// use the color attachment texture as the texture of the quad plane
+
+	blurShader.SetInt("image", 0);
+
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glBindVertexArray(0);

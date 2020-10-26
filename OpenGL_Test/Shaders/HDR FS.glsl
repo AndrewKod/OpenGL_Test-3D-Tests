@@ -4,7 +4,10 @@ out vec4 FragColor;
 in vec2 TexCoords;
 
 uniform sampler2D screenTexture;//hdrBuffer
+uniform sampler2D bloomBlur;
 uniform float exposure;
+
+uniform bool bBloom = false;
 
 layout (std140) uniform Settings
 {
@@ -17,6 +20,12 @@ void main()
 
 	const float gamma = 2.2;
     vec3 hdrColor = texture(screenTexture, TexCoords).rgb;
+
+	if(bBloom)
+	{
+		vec3 bloomColor = texture(bloomBlur, TexCoords).rgb;
+		hdrColor += bloomColor;
+	}
 
     vec3 mapped = vec3(1.0) - exp(-hdrColor * exposure);
     mapped = pow(mapped, vec3(1.0 / gamma));
