@@ -146,9 +146,13 @@
     <None Include="Shaders\Fragment Shader Model.glsl" />
     <None Include="Shaders\Fragment Shader PP.glsl" />
     <None Include="Shaders\Fragment Shader.glsl" />
+    <None Include="Shaders\Geometry Pass FS.glsl" />
+    <None Include="Shaders\Geometry Pass VS.glsl" />
     <None Include="Shaders\Geometry Shader Model Normals.glsl" />
     <None Include="Shaders\Geometry Shader Model.glsl" />
     <None Include="Shaders\HDR FS.glsl" />
+    <None Include="Shaders\Lightning Pass FS.glsl" />
+    <None Include="Shaders\Lightning Pass VS.glsl" />
     <None Include="Shaders\Point Light Depth FS.glsl" />
     <None Include="Shaders\Point Light Depth GS.glsl" />
     <None Include="Shaders\Point Light Depth VS.glsl" />

@@ -139,6 +139,7 @@ struct Settings
 	GLint bInstancing =				false;//I excluded from settingsUBO
 	GLint bShowNormals =			false;//N excluded from settingsUBO
 
+	GLint bDeferredRendering =		false;//T excluded from settingsUBO
 	
 
 	void UpdateSettings()
@@ -282,6 +283,8 @@ lights;
 
 
 
+void UpdateMatrices(const GLuint& uboBlock);
+
 void GenCubeVAO(GLuint& cubeVAO, GLuint& cubeVBO, GLuint& tanVBO, GLuint& bitanVBO);
 void GenPlaneVAO(GLuint& planeVAO, GLuint& planeVBO, GLuint& tanVBO, GLuint& bitanVBO);
 void GenTangentsAndBitangents(float vertices[],
@@ -394,6 +397,23 @@ struct LightSpaceMatrices
 }
 lightSpaceMatrices;
 
+
+////////////////////////////////////DEFERRED RENDERING/////////////////////////////////
+void Setup_G_Buffer(GLuint& gBuffer,
+	GLuint& gPosition, GLuint& gNormal, GLuint& gAlbedoSpec,
+	GLuint& gTangent, GLuint& gBitangent,
+	GLuint& gRenderBuffer);
+
+void FillModelMatrices_DR(GLuint dimensions, glm::mat4 *modelMatrices);
+
+void Gen_DR_VAO(GLuint& DR_VAO, GLuint& DR_VBO);
+
+void Draw_DR_Quad(Shader & lightPassShader, GLuint DR_VAO,
+	GLuint& gPosition, GLuint& gNormal, GLuint& gAlbedoSpec,
+	GLuint& gTangent, GLuint& gBitangent);
+
+///////////////////////////////////////////////////////////////////////////////////////
+
 int main()
 {
     // glfw: initialize and configure
@@ -485,6 +505,9 @@ int main()
 	Shader HDR_Shader("Shaders/Vertex Shader PP.glsl", "Shaders/HDR FS.glsl");
 
 	Shader blurShader("Shaders/Blur VS.glsl", "Shaders/Blur FS.glsl");
+
+	Shader geomPassShader("Shaders/Geometry Pass VS.glsl", "Shaders/Geometry Pass FS.glsl");
+	Shader lightPassShader("Shaders/Lightning Pass VS.glsl", "Shaders/Lightning Pass FS.glsl");
 	
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
@@ -508,6 +531,8 @@ int main()
 	modelShaderNormals.BindUniformBuffer("Matrices", 0);
 
 	skullShader.BindUniformBuffer("Matrices", 0);
+
+	geomPassShader.BindUniformBuffer("Matrices", 0);
 
 	/////////////////////////////////////SETTINGS UNIFORM BUFFER////////////////////////////////////	
 	glGenBuffers(1, &settingsUBO);
@@ -810,6 +835,26 @@ int main()
 	glfwSetWindowSize(window, SCR_WIDTH + 1, SCR_HEIGHT + 1);
 	glfwSetWindowSize(window, SCR_WIDTH - 1, SCR_HEIGHT - 1);
 	
+	//////////////////////////////////DEFERRED RENDERING///////////////////////////////
+	GLuint gBuffer = 0;
+	
+	GLuint gPosition = 0, gNormal = 0, gAlbedoSpec = 0, gTangent = 0, gBitangent = 0;
+	GLuint gRenderBuffer = 0;
+	
+	Setup_G_Buffer(gBuffer, gPosition, gNormal, gAlbedoSpec, gTangent, gBitangent, gRenderBuffer);
+	
+	GLuint modelMatricesVBO_DR = 0;
+	GLuint dimensions = 5;
+	glm::mat4 *modelMatrices_DR = new glm::mat4[dimensions * dimensions];
+	FillModelMatrices_DR(dimensions, modelMatrices_DR);
+
+	UpdateVAO(model, dimensions * dimensions, modelMatrices_DR, modelMatricesVBO_DR);
+
+	GLuint DR_VAO = 0, DR_VBO = 0;
+	Gen_DR_VAO(DR_VAO, DR_VBO);
+
+	///////////////////////////////////////////////////////////////////////////////////
+
     // render loop
     // -----------
 	while (!glfwWindowShouldClose(window))
@@ -824,101 +869,89 @@ int main()
 		// -----
 		processInput(window);
 
-		//if shadows aren't drawing - use default parameters for functions calls
-		GLuint dirLightDepthMapTexID = 0;
-		std::vector<GLuint>* pointLightDepthCubemapsPtr = nullptr;
-
-		/////////////////////////////////////////////SHADOWS//////////////////////////////////////////////
-		if (settings.bShadows && settings.bDirectionalLight)
+		if (settings.bDeferredRendering)
 		{
-			//Scene drawing for shadows
-			glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
-			glBindFramebuffer(GL_FRAMEBUFFER, dirLightFBO);
-			glCullFace(GL_BACK);
-			DrawSceneForDirShadows(dirLightDepthShader, cubeVAO, planeVAO, cubeModelMatrices);
-			glCullFace(GL_FRONT);
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-			// 2. рисуем сцену как обычно с тен€ми (использу€ карту глубины)
+			UpdateMatrices(uboBlock);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+			geomPassShader.UseProgram();		
+			geomPassShader.SetBool("binvertUVs", true);
+			model.Draw(geomPassShader, true, dimensions*dimensions);
+			geomPassShader.SetBool("binvertUVs", false);
+
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
-			dirLightDepthMapTexID = dirLightDepthMapTex;
-
-			shader.UseProgram();
-			shader.SetMat4("dirLightSpaceMatrix", lightSpaceMatrices.dirLightSpaceMatrix);
+			Draw_DR_Quad(lightPassShader, DR_VAO,
+				gPosition, gNormal, gAlbedoSpec,
+				gTangent, gBitangent);
 		}
-
-		if (settings.bShadows && settings.bPointLights)
+		else
 		{
-			//Scene drawing for shadows
-			glViewport(0, 0, POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT);
-			DrawSceneForPointShadows(pointLightDepthShader, pointLightFBOs,
-				pointShadowProj, pointLightsNum,
-				cubeVAO, planeVAO, cubeModelMatrices);
+			//if shadows aren't drawing - use default parameters for functions calls
+			GLuint dirLightDepthMapTexID = 0;
+			std::vector<GLuint>* pointLightDepthCubemapsPtr = nullptr;
 
-			// 2. рисуем сцену как обычно с тен€ми (использу€ карту глубины)
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);				
+			/////////////////////////////////////////////SHADOWS//////////////////////////////////////////////
+			if (settings.bShadows && settings.bDirectionalLight)
+			{
+				//Scene drawing for shadows
+				glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
+				glBindFramebuffer(GL_FRAMEBUFFER, dirLightFBO);
+				glCullFace(GL_BACK);
+				DrawSceneForDirShadows(dirLightDepthShader, cubeVAO, planeVAO, cubeModelMatrices);
+				glCullFace(GL_FRONT);
 
-			pointLightDepthCubemapsPtr = &pointLightDepthCubemaps;
-		}
+				// 2. рисуем сцену как обычно с тен€ми (использу€ карту глубины)
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
-		////////////////////////////////////////Common Scene drawing/////////////////////////////////////////
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
-			cubeTexture, cubeSpecTexture,
-			floorTexture, cubemapTexture,
-			wallTexture, wallNormalMap, wallHeightMap,
-			dirLightDepthMapTexID,
-			pointLightDepthCubemapsPtr);
+				dirLightDepthMapTexID = dirLightDepthMapTex;
+
+				shader.UseProgram();
+				shader.SetMat4("dirLightSpaceMatrix", lightSpaceMatrices.dirLightSpaceMatrix);
+			}
+
+			if (settings.bShadows && settings.bPointLights)
+			{
+				//Scene drawing for shadows
+				glViewport(0, 0, POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT);
+				DrawSceneForPointShadows(pointLightDepthShader, pointLightFBOs,
+					pointShadowProj, pointLightsNum,
+					cubeVAO, planeVAO, cubeModelMatrices);
+
+				// 2. рисуем сцену как обычно с тен€ми (использу€ карту глубины)
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+
+				pointLightDepthCubemapsPtr = &pointLightDepthCubemaps;
+			}
+
+			////////////////////////////////////////Common Scene drawing/////////////////////////////////////////
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+			DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
+				cubeTexture, cubeSpecTexture,
+				floorTexture, cubemapTexture,
+				wallTexture, wallNormalMap, wallHeightMap,
+				dirLightDepthMapTexID,
+				pointLightDepthCubemapsPtr);
 
 
-		/////////////////////////////////////////////////FRAME BUFFER///////////////////////////////////////////////
-		// render
-		// ------
-		// bind to framebuffer and draw scene as we normally would to color texture 
+			/////////////////////////////////////////////////FRAME BUFFER///////////////////////////////////////////////
+			// render
+			// ------
+			// bind to framebuffer and draw scene as we normally would to color texture 
 
-		glBindFramebuffer(GL_FRAMEBUFFER, settings.bAntiAliasing ? framebufferAA : framebuffer);
+			glBindFramebuffer(GL_FRAMEBUFFER, settings.bAntiAliasing ? framebufferAA : framebuffer);
 
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
-			cubeTexture, cubeSpecTexture,
-			floorTexture, cubemapTexture,
-			wallTexture, wallNormalMap, wallHeightMap,
-			dirLightDepthMapTexID,
-			pointLightDepthCubemapsPtr);
-
-		if (settings.bPointLights)
-			DrawPointLights(pointLights, pointLightsModelMatrices,
-				shader, cubeVAO);
-
-		// now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
-		if (settings.bAntiAliasing)
-		{
-			// 2. now blit multisampled buffer(s) to normal colorbuffer of intermediate FBO. Image is stored in screenTexture
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferAA);
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBO);
-			glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-		}
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		/////////////////////////////////////HDR & BLOOM///////////////////////////////////
-		if (settings.bHDR)
-		{
-			shader.UseProgram();
-			shader.SetBool("bHDR", true);
-			if(settings.bBloom)
-				shader.SetBool("bBloom", true);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, HDR_FBO);
-
-			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 			DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
 				cubeTexture, cubeSpecTexture,
@@ -931,106 +964,143 @@ int main()
 				DrawPointLights(pointLights, pointLightsModelMatrices,
 					shader, cubeVAO);
 
+			// now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+			if (settings.bAntiAliasing)
+			{
+				// 2. now blit multisampled buffer(s) to normal colorbuffer of intermediate FBO. Image is stored in screenTexture
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferAA);
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBO);
+				glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+			}
+
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-			shader.UseProgram();
-			shader.SetBool("bHDR", false);
-			shader.SetBool("bBloom", false);
+			/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			if (settings.bBloom)
+			/////////////////////////////////////HDR & BLOOM///////////////////////////////////
+			if (settings.bHDR)
 			{
-				bool horizontal = true, first_iteration = true;
-				int amount = 10;
-				blurShader.UseProgram();
-				for (unsigned int i = 0; i < amount; i++)
-				{
-					glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBOs[horizontal]);
-					blurShader.SetInt("horizontal", horizontal);
-					/*glBindTexture(
-						GL_TEXTURE_2D, first_iteration ? HDR_ColorBuffers[1] : pingpongColorsBuffers[!horizontal]
-					);*/
+				shader.UseProgram();
+				shader.SetBool("bHDR", true);
+				if (settings.bBloom)
+					shader.SetBool("bBloom", true);
 
-					DrawBlurQuad(blurShader, screenQuadVAO,
-						first_iteration ? HDR_ColorBuffers[1] : pingpongColorsBuffers[!horizontal]);
+				glBindFramebuffer(GL_FRAMEBUFFER, HDR_FBO);
 
-					horizontal = !horizontal;
-					if (first_iteration)
-						first_iteration = false;
-				}
+				glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+				DrawScene(shader, skyboxShader, cubeVAO, cubeModelMatrices, planeVAO, skyboxVAO, uboBlock,
+					cubeTexture, cubeSpecTexture,
+					floorTexture, cubemapTexture,
+					wallTexture, wallNormalMap, wallHeightMap,
+					dirLightDepthMapTexID,
+					pointLightDepthCubemapsPtr);
+
+				if (settings.bPointLights)
+					DrawPointLights(pointLights, pointLightsModelMatrices,
+						shader, cubeVAO);
+
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+				shader.UseProgram();
+				shader.SetBool("bHDR", false);
+				shader.SetBool("bBloom", false);
+
+				if (settings.bBloom)
+				{
+					bool horizontal = true, first_iteration = true;
+					int amount = 10;
+					blurShader.UseProgram();
+					for (unsigned int i = 0; i < amount; i++)
+					{
+						glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBOs[horizontal]);
+						blurShader.SetInt("horizontal", horizontal);
+						/*glBindTexture(
+							GL_TEXTURE_2D, first_iteration ? HDR_ColorBuffers[1] : pingpongColorsBuffers[!horizontal]
+						);*/
+
+						DrawBlurQuad(blurShader, screenQuadVAO,
+							first_iteration ? HDR_ColorBuffers[1] : pingpongColorsBuffers[!horizontal]);
+
+						horizontal = !horizontal;
+						if (first_iteration)
+							first_iteration = false;
+					}
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				}
 			}
+			///////////////////////////////////////////////////////////////////////////
+
+			DrawReflectCube(shader, cubeVAO, cubemapTexture, cubeTexture, cubeSpecTexture, camera.Position);
+
+			DrawRefractCube(shader, cubeVAO, cubemapTexture, camera.Position);
+
+
+			//Draw model
+			modelShader.UseProgram();
+			modelShader.SetVec3("cameraPos", camera.Position);
+			modelShader.SetFloat("time", glfwGetTime());
+			modelShader.SetMat4("model", mod);
+			modelShader.SetBool("bReflect", false);
+			modelShader.SetBool("binvertUVs", true);
+			model.Draw(modelShader);
+			modelShader.SetBool("bReflect", false);
+			modelShader.SetBool("binvertUVs", false);
+
+			///////////////////////////////Draw model normals//////////////////////////////
+			if (settings.bShowNormals)
+			{
+				modelShaderNormals.UseProgram();
+				modelShaderNormals.SetBool("bShowNormals", true);
+				modelShaderNormals.SetBool("binvertUVs", true);
+				model.Draw(modelShaderNormals);
+				modelShaderNormals.SetBool("bShowNormals", false);
+				modelShaderNormals.SetBool("binvertUVs", false);
+			}
+
+			///////////////////////////////////INSTANCING//////////////////////////////////
+			//render of planet and asteroids
+			if (settings.bInstancing)
+			{
+				skullShader.UseProgram();
+				skullShader.SetVec3("cameraPos", camera.Position);
+				skullShader.SetFloat("time", glfwGetTime());
+				skullShader.SetMat4("model", mod);
+				skullShader.SetBool("bReflect", false);
+				skullShader.SetBool("bInstancing", true);
+				skull.Draw(skullShader, true, amount);
+				skullShader.SetBool("bInstancing", false);
+			}
+
+			//////////////////////////////////POST PROCESS EFFECT//////////////////////////
+			postProcShader.UseProgram();
+			postProcShader.SetBool("bUseKernel", settings.bPostProcess);
+			postProcShader.SetBool("bAntiAliasing", settings.bAntiAliasing);
+			postProcShader.SetBool("bBlit", settings.bBlit);
+
+			//Show scene with HDR
+			if (settings.bHDR)
+			{
+				HDR_Shader.UseProgram();
+				HDR_Shader.SetFloat("exposure", 0.5f);
+
+				DrawHDR(HDR_Shader, postProcVAO, HDR_ColorBuffers, pingpongColorsBuffers);
+			}
+			//show depth texture
+			else if (settings.bShadows && settings.bDirectionalLight && settings.bShowDirLightDepthMap)
+				DrawPostProc(postProcShader, postProcVAO, dirLightDepthMapTex, textureColorbufferMS, screenBlitTexture);
+			else
+				DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
+
+
+			//////////////////////////////////////LIGHTS//////////////////////////////////
+			if (settings.bPointLights)
+				UpdatePointLights(pointLights, pointLightsModelMatrices, shader, cubeVAO);
+
+			if (settings.bSpotLight)
+				UpdateSpotLight();
 		}
-		///////////////////////////////////////////////////////////////////////////
-
-		DrawReflectCube(shader, cubeVAO, cubemapTexture, cubeTexture, cubeSpecTexture, camera.Position);
-
-		DrawRefractCube(shader, cubeVAO, cubemapTexture, camera.Position);
-
-
-		//Draw model
-		modelShader.UseProgram();
-		modelShader.SetVec3("cameraPos", camera.Position);
-		modelShader.SetFloat("time", glfwGetTime());
-		modelShader.SetMat4("model", mod);
-		modelShader.SetBool("bReflect", false);
-		modelShader.SetBool("binvertUVs", true);
-		model.Draw(modelShader);
-		modelShader.SetBool("bReflect", false);
-		modelShader.SetBool("binvertUVs", false);
-
-		///////////////////////////////Draw model normals//////////////////////////////
-		if (settings.bShowNormals)
-		{
-			modelShaderNormals.UseProgram();
-			modelShaderNormals.SetBool("bShowNormals", true);
-			modelShaderNormals.SetBool("binvertUVs", true);
-			model.Draw(modelShaderNormals);
-			modelShaderNormals.SetBool("bShowNormals", false);
-			modelShaderNormals.SetBool("binvertUVs", false);
-		}
-
-		///////////////////////////////////INSTANCING//////////////////////////////////
-		//render of planet and asteroids
-		if (settings.bInstancing)
-		{
-			skullShader.UseProgram();
-			skullShader.SetVec3("cameraPos", camera.Position);
-			skullShader.SetFloat("time", glfwGetTime());
-			skullShader.SetMat4("model", mod);
-			skullShader.SetBool("bReflect", false);
-			skullShader.SetBool("bInstancing", true);
-			skull.Draw(skullShader, true, amount);
-			skullShader.SetBool("bInstancing", false);
-		}
-
-		//////////////////////////////////POST PROCESS EFFECT//////////////////////////
-		postProcShader.UseProgram();
-		postProcShader.SetBool("bUseKernel", settings.bPostProcess);
-		postProcShader.SetBool("bAntiAliasing", settings.bAntiAliasing);
-		postProcShader.SetBool("bBlit", settings.bBlit);
-
-		//Show scene with HDR
-		if (settings.bHDR)
-		{
-			HDR_Shader.UseProgram();
-			HDR_Shader.SetFloat("exposure", 0.5f);
-
-			DrawHDR(HDR_Shader, postProcVAO, HDR_ColorBuffers, pingpongColorsBuffers);
-		}
-		//show depth texture
-		else if (settings.bShadows && settings.bDirectionalLight && settings.bShowDirLightDepthMap)
-			DrawPostProc(postProcShader, postProcVAO, dirLightDepthMapTex, textureColorbufferMS, screenBlitTexture);		
-		else
-			DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
-
-
-		//////////////////////////////////////LIGHTS//////////////////////////////////
-		if (settings.bPointLights)
-			UpdatePointLights(pointLights, pointLightsModelMatrices, shader, cubeVAO);
-
-		if (settings.bSpotLight)
-			UpdateSpotLight();
-
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
 		glfwSwapBuffers(window);
@@ -1068,6 +1138,15 @@ int main()
 	glDeleteVertexArrays(1, &screenQuadVAO);
 	glDeleteBuffers(1, &screenQuadVBO);
 
+
+	//////////////////////////DEFERRED RENDERING///////////////////////////
+	glDeleteBuffers(1, &modelMatricesVBO_DR);
+	delete[] modelMatrices_DR;
+
+	glDeleteVertexArrays(1, &DR_VAO);
+	glDeleteBuffers(1, &DR_VBO);
+	///////////////////////////////////////////////////////////////////////
+
     glfwTerminate();
     return 0;
 }
@@ -1090,10 +1169,7 @@ void DrawScene(Shader & shader, Shader & skyboxShader,
 	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
 	
 	////////////////////////////////////////////UNIFORM BUFFER VALUES///////////////////////////////////////////////
-	glBindBuffer(GL_UNIFORM_BUFFER, uboBlock);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &view[0][0]);
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &projection[0][0]);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	UpdateMatrices(uboBlock);
 	
 
 	shader.SetBool("bStencil", false);
@@ -1364,6 +1440,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		if (settings.bBloom)
 			settings.bHDR = true;
 
+		settings.UpdateSettings();
+	}
+
+	if (key == GLFW_KEY_T && action == GLFW_PRESS)
+	{
+		settings.bDeferredRendering = !settings.bDeferredRendering;
+		
 		settings.UpdateSettings();
 	}
 }
@@ -2852,4 +2935,175 @@ void SetupPingPongFBOs(GLuint pingpongFBOs[], GLuint pingpongColors[])
 
 	
 
+}
+
+void Setup_G_Buffer(GLuint& gBuffer,
+	GLuint& gPosition, GLuint& gNormal, GLuint& gAlbedoSpec,
+	GLuint& gTangent, GLuint& gBitangent,
+	GLuint& gRenderBuffer)
+{
+	glGenFramebuffers(1, &gBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+	
+	// буфер позиций
+	glGenTextures(1, &gPosition);
+	glBindTexture(GL_TEXTURE_2D, gPosition);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
+
+	// буфер нормалей
+	glGenTextures(1, &gNormal);
+	glBindTexture(GL_TEXTURE_2D, gNormal);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
+
+	// буфер дл€ цвета + коэффициента зеркального отражени€
+	glGenTextures(1, &gAlbedoSpec);
+	glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+
+	glGenTextures(1, &gTangent);
+	glBindTexture(GL_TEXTURE_2D, gTangent);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gTangent, 0);
+
+	glGenTextures(1, &gBitangent);
+	glBindTexture(GL_TEXTURE_2D, gBitangent);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gBitangent, 0);
+
+	
+
+	
+	// укажем OpenGL, какие буферы мы будем использовать при рендеринге
+	unsigned int attachments[5] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+		GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4 };
+	glDrawBuffers(5, attachments);
+
+	glGenRenderbuffers(1, &gRenderBuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, gRenderBuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, gRenderBuffer); // now actually attach it
+
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		cout << "ERROR::FRAMEBUFFER::" << Status << endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+
+void FillModelMatrices_DR(GLuint dimensions, glm::mat4 *modelMatrices)
+{
+	glm::mat4 modelP(1.0f);
+	modelP = glm::translate(modelP, glm::vec3(0.0f, -3.0f, 0.0f));
+	modelP = glm::rotate(modelP, glm::radians(-90.f), glm::vec3(1.0f, 0.0f, 0.0f));
+	modelP = glm::scale(modelP, glm::vec3(1.0f, 1.0f, 1.0f));
+
+	modelMatrices[0] = modelP;
+
+	srand(glfwGetTime()); // задаем seed дл€ генератора случ. чисел
+	;
+	for ( int i = 0; i < dimensions; i++)
+	{
+		for (int j = 0; j < dimensions; j++)
+		{
+			glm::mat4 model(1.0f);
+
+			model = glm::translate(model, glm::vec3((float)(i * 5), 0.f, -(float)(j * 5)));
+
+			// 3. поворот: поворот на случайный угол вдоль 
+			float rotAngle = (rand() % 360);
+			model = glm::rotate(model, rotAngle, glm::vec3(0.4f, 0.6f, 0.8f));
+
+			// 4. добавл€ем в массив матриц
+			modelMatrices[i*dimensions + j] = model;
+		}
+	}
+}
+
+//* updating view and projection matrices
+void UpdateMatrices(const GLuint& uboBlock)
+{
+	glm::mat4 view = camera.GetViewMatrix();
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+
+	////////////////////////////////////////////UNIFORM BUFFER VALUES///////////////////////////////////////////////
+	glBindBuffer(GL_UNIFORM_BUFFER, uboBlock);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &view[0][0]);
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &projection[0][0]);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+void Gen_DR_VAO(GLuint& DR_VAO, GLuint& DR_VBO)
+{
+	//have to be written in CW order
+	float DR_Vertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+		// positions   // texCoords
+		-1.0f, -1.0f,  0.0f, 0.0f,
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		 1.0f, -1.0f,  1.0f, 0.0f,
+
+		 1.0f, -1.0f,  1.0f, 0.0f,
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		 1.0f,  1.0f,  1.0f, 1.0f
+	};
+
+	glGenVertexArrays(1, &DR_VAO);
+	glGenBuffers(1, &DR_VBO);
+	glBindVertexArray(DR_VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, DR_VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(DR_Vertices), &DR_Vertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	glBindVertexArray(0);
+}
+
+void Draw_DR_Quad(Shader & lightPassShader, GLuint DR_VAO,
+	GLuint& gPosition, GLuint& gNormal, GLuint& gAlbedoSpec,
+	GLuint& gTangent, GLuint& gBitangent)
+{
+	lightPassShader.UseProgram();
+
+	glBindVertexArray(DR_VAO);
+
+	glActiveTexture(GL_TEXTURE0);	
+	glBindTexture(GL_TEXTURE_2D, gPosition);
+	lightPassShader.SetInt("gPosition", 0);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, gNormal);
+	lightPassShader.SetInt("gNormal", 1);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+	lightPassShader.SetInt("gAlbedoSpec", 2);
+
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, gTangent);
+	lightPassShader.SetInt("gTangent", 3);
+
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, gBitangent);
+	lightPassShader.SetInt("gBitangent", 4);
+	
+	lightPassShader.SetMat4("model", glm::mat4(1.f));
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glBindVertexArray(0);
 }
