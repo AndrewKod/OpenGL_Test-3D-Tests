@@ -2,7 +2,7 @@
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3) out;
 
-#define NUM_POINT_LIGHTS 16
+#define NUM_POINT_LIGHTS 32
 
 in VS_OUT {    
 	vec3 gs_normal;

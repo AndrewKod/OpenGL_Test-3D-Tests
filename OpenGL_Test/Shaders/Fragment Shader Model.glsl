@@ -3,7 +3,7 @@ layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;
 
 #define NUM_TEXTURE_MAPS 16
-#define NUM_POINT_LIGHTS 16 
+#define NUM_POINT_LIGHTS 32 
 
 struct Material {
     /*vec3 ambient;*//*ambient in most of cases matches with diffuse*/

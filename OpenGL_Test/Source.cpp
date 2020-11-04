@@ -202,7 +202,7 @@ struct PointLight
 	PointLight(){}
 
 	PointLight(glm::vec4 position, glm::vec4 ambient, glm::vec4 diffuse, glm::vec4 specular,
-		float constant = 1.0f, float linear = 0.007f, float quadratic = 0.0002f, GLint bEnabled = true)
+		GLint bEnabled = true, float constant = 1.0f, float linear = 0.007f, float quadratic = 0.0002f)
 	{
 		this->position = position;
 
@@ -221,7 +221,7 @@ struct PointLight
 
 GLsizeiptr CalcStructSizeUBO(GLsizeiptr structSize);
 
-#define NUM_POINT_LIGHTS 16
+#define NUM_POINT_LIGHTS 32
 
 GLuint lightsUBO = 0;
 GLuint pointLightPositionsUBO = 0;
@@ -345,6 +345,7 @@ void UpdateVAO(Model & model, GLuint amount, glm::mat4 *modelMatrices, GLuint& m
 
 void AddDirectedLight();
 void AddPointLights(std::vector<PointLight>& pointLights, std::vector<glm::mat4>& pointLightsModelMatrices);
+void SetPointLights(std::vector<PointLight>& pointLights);
 void AddSpotLight();
 
 void UpdateSpotLight();
@@ -400,18 +401,26 @@ lightSpaceMatrices;
 
 ////////////////////////////////////DEFERRED RENDERING/////////////////////////////////
 void Setup_G_Buffer(GLuint& gBuffer,
-	GLuint& gPosition, GLuint& gNormal, GLuint& gAlbedoSpec,
-	GLuint& gTangent, GLuint& gBitangent,
+	GLuint& gPosition, GLuint& gModelNormal, GLuint& gMaterialNormal,
+	GLuint& gAlbedoSpec, GLuint& gTangent, GLuint& gBitangent,
 	GLuint& gRenderBuffer);
 
-void FillModelMatrices_DR(GLuint dimensions, glm::mat4 *modelMatrices);
+void FillModelMatrices_DR(GLuint dimensions, GLfloat scale, glm::mat4 *modelMatrices, glm::mat4 *normalMatrices);
 
 void Gen_DR_VAO(GLuint& DR_VAO, GLuint& DR_VBO);
 
 void Draw_DR_Quad(Shader & lightPassShader, GLuint DR_VAO,
-	GLuint& gPosition, GLuint& gNormal, GLuint& gAlbedoSpec,
-	GLuint& gTangent, GLuint& gBitangent);
+	GLuint& gPosition, GLuint& gModelNormal, GLuint& gMaterialNormal,
+	GLuint& gAlbedoSpec, GLuint& gTangent, GLuint& gBitangent);
 
+void UpdateNormalMatricesVAO(Model & model, GLuint amount, glm::mat4 *normalMatrices, GLuint& normalMatricesVBO);
+
+void AddPointLights_DR(std::vector<PointLight>& pointLights, std::vector<glm::mat4>& pointLightsModelMatrices,
+	GLfloat areaSize);
+
+void UpdatePointLights_DR(std::vector<PointLight>& pointLights,
+	std::vector<glm::mat4>& pointLightsModelMatrices,
+	Shader& lampShader, GLuint lampVAO);
 ///////////////////////////////////////////////////////////////////////////////////////
 
 int main()
@@ -508,7 +517,8 @@ int main()
 
 	Shader geomPassShader("Shaders/Geometry Pass VS.glsl", "Shaders/Geometry Pass FS.glsl");
 	Shader lightPassShader("Shaders/Lightning Pass VS.glsl", "Shaders/Lightning Pass FS.glsl");
-	
+	Shader lampShader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
+		"Shaders/Geometry Shader Model.glsl");
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
 	unsigned int uboBlock;
@@ -534,6 +544,7 @@ int main()
 
 	geomPassShader.BindUniformBuffer("Matrices", 0);
 
+	lampShader.BindUniformBuffer("Matrices", 0);
 	/////////////////////////////////////SETTINGS UNIFORM BUFFER////////////////////////////////////	
 	glGenBuffers(1, &settingsUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, settingsUBO);
@@ -575,6 +586,8 @@ int main()
 
 	modelShader.BindUniformBuffer("Lights", 2);
 	skullShader.BindUniformBuffer("Lights", 2);
+	lightPassShader.BindUniformBuffer("Lights", 2);
+
 
 	glGenBuffers(1, &pointLightPositionsUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, pointLightPositionsUBO);
@@ -838,20 +851,30 @@ int main()
 	//////////////////////////////////DEFERRED RENDERING///////////////////////////////
 	GLuint gBuffer = 0;
 	
-	GLuint gPosition = 0, gNormal = 0, gAlbedoSpec = 0, gTangent = 0, gBitangent = 0;
+	GLuint gPosition = 0, gModelNormal = 0, gMaterialNormal = 0,
+		gAlbedoSpec = 0, gTangent = 0, gBitangent = 0;
 	GLuint gRenderBuffer = 0;
 	
-	Setup_G_Buffer(gBuffer, gPosition, gNormal, gAlbedoSpec, gTangent, gBitangent, gRenderBuffer);
+	Setup_G_Buffer(gBuffer, gPosition, gModelNormal, gMaterialNormal,
+		gAlbedoSpec, gTangent, gBitangent, gRenderBuffer);
 	
-	GLuint modelMatricesVBO_DR = 0;
+	GLuint modelMatricesVBO_DR = 0, normalMatricesVBO_DR = 0;
 	GLuint dimensions = 5;
+	GLfloat scale_DR = 5.f;
 	glm::mat4 *modelMatrices_DR = new glm::mat4[dimensions * dimensions];
-	FillModelMatrices_DR(dimensions, modelMatrices_DR);
+	glm::mat4 *normalMatrices_DR = new glm::mat4[dimensions * dimensions];
+	FillModelMatrices_DR(dimensions, scale_DR, modelMatrices_DR, normalMatrices_DR);
 
 	UpdateVAO(model, dimensions * dimensions, modelMatrices_DR, modelMatricesVBO_DR);
+	UpdateNormalMatricesVAO(model, dimensions * dimensions, normalMatrices_DR, normalMatricesVBO_DR);
 
 	GLuint DR_VAO = 0, DR_VBO = 0;
 	Gen_DR_VAO(DR_VAO, DR_VBO);
+
+	std::vector<PointLight> pointLights_DR;
+	std::vector<glm::mat4> pointLightsModelMatrices_DR;
+
+	AddPointLights_DR(pointLights_DR, pointLightsModelMatrices_DR, dimensions*scale_DR);
 
 	///////////////////////////////////////////////////////////////////////////////////
 
@@ -871,6 +894,10 @@ int main()
 
 		if (settings.bDeferredRendering)
 		{
+			SetPointLights(pointLights_DR);
+
+			UpdatePointLights_DR(pointLights_DR, pointLightsModelMatrices_DR, lampShader, cubeVAO);
+
 			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -889,11 +916,13 @@ int main()
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 			Draw_DR_Quad(lightPassShader, DR_VAO,
-				gPosition, gNormal, gAlbedoSpec,
-				gTangent, gBitangent);
+				gPosition, gModelNormal, gMaterialNormal,
+				gAlbedoSpec, gTangent, gBitangent);
 		}
 		else
 		{
+			SetPointLights(pointLights);
+
 			//if shadows aren't drawing - use default parameters for functions calls
 			GLuint dirLightDepthMapTexID = 0;
 			std::vector<GLuint>* pointLightDepthCubemapsPtr = nullptr;
@@ -1141,7 +1170,9 @@ int main()
 
 	//////////////////////////DEFERRED RENDERING///////////////////////////
 	glDeleteBuffers(1, &modelMatricesVBO_DR);
+	glDeleteBuffers(1, &normalMatricesVBO_DR);
 	delete[] modelMatrices_DR;
+	delete[] normalMatrices_DR;
 
 	glDeleteVertexArrays(1, &DR_VAO);
 	glDeleteBuffers(1, &DR_VBO);
@@ -2563,12 +2594,26 @@ void AddPointLights(std::vector<PointLight>& pointLights, std::vector<glm::mat4>
 
 	for (GLint i = 0; i < pointLights.size(); i++)
 	{
-		lights.pointLights[i] = pointLights[i];
 		pointLightsModelMatrices.push_back(glm::mat4());
+	}
+
+	SetPointLights(pointLights);
+}
+
+void SetPointLights(std::vector<PointLight>& pointLights)
+{	
+	for (GLint i = 0; i < pointLights.size(); i++)
+	{
+		lights.pointLights[i] = pointLights[i];		
+	}
+	for (GLint i = pointLights.size(); i < NUM_POINT_LIGHTS; i++)
+	{
+		lights.pointLights[i].bEnabled = false;
 	}
 
 	lights.UpdateLights();
 }
+
 void AddSpotLight()
 {
 	lights.spotLight.cutOff = glm::cos(glm::radians(12.5f));
@@ -2938,8 +2983,8 @@ void SetupPingPongFBOs(GLuint pingpongFBOs[], GLuint pingpongColors[])
 }
 
 void Setup_G_Buffer(GLuint& gBuffer,
-	GLuint& gPosition, GLuint& gNormal, GLuint& gAlbedoSpec,
-	GLuint& gTangent, GLuint& gBitangent,
+	GLuint& gPosition, GLuint& gModelNormal, GLuint& gMaterialNormal,
+	GLuint& gAlbedoSpec, GLuint& gTangent, GLuint& gBitangent,
 	GLuint& gRenderBuffer)
 {
 	glGenFramebuffers(1, &gBuffer);
@@ -2954,12 +2999,20 @@ void Setup_G_Buffer(GLuint& gBuffer,
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
 
 	// буфер нормалей
-	glGenTextures(1, &gNormal);
-	glBindTexture(GL_TEXTURE_2D, gNormal);
+	glGenTextures(1, &gModelNormal);
+	glBindTexture(GL_TEXTURE_2D, gModelNormal);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gModelNormal, 0);
+
+	// буфер нормалей
+	glGenTextures(1, &gMaterialNormal);
+	glBindTexture(GL_TEXTURE_2D, gMaterialNormal);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gMaterialNormal, 0);
 
 	// буфер для цвета + коэффициента зеркального отражения
 	glGenTextures(1, &gAlbedoSpec);
@@ -2967,29 +3020,29 @@ void Setup_G_Buffer(GLuint& gBuffer,
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gAlbedoSpec, 0);
 
 	glGenTextures(1, &gTangent);
 	glBindTexture(GL_TEXTURE_2D, gTangent);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gTangent, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gTangent, 0);
 
 	glGenTextures(1, &gBitangent);
 	glBindTexture(GL_TEXTURE_2D, gBitangent);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gBitangent, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, gBitangent, 0);
 
 	
 
 	
 	// укажем OpenGL, какие буферы мы будем использовать при рендеринге
-	unsigned int attachments[5] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
-		GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4 };
-	glDrawBuffers(5, attachments);
+	unsigned int attachments[6] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+		GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5 };
+	glDrawBuffers(6, attachments);
 
 	glGenRenderbuffers(1, &gRenderBuffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, gRenderBuffer);
@@ -3005,7 +3058,7 @@ void Setup_G_Buffer(GLuint& gBuffer,
 }
 
 
-void FillModelMatrices_DR(GLuint dimensions, glm::mat4 *modelMatrices)
+void FillModelMatrices_DR(GLuint dimensions, GLfloat scale, glm::mat4 *modelMatrices, glm::mat4 *normalMatrices)
 {
 	glm::mat4 modelP(1.0f);
 	modelP = glm::translate(modelP, glm::vec3(0.0f, -3.0f, 0.0f));
@@ -3022,7 +3075,7 @@ void FillModelMatrices_DR(GLuint dimensions, glm::mat4 *modelMatrices)
 		{
 			glm::mat4 model(1.0f);
 
-			model = glm::translate(model, glm::vec3((float)(i * 5), 0.f, -(float)(j * 5)));
+			model = glm::translate(model, glm::vec3((float)(i * scale), 0.f, -(float)(j * scale)));
 
 			// 3. поворот: поворот на случайный угол вдоль 
 			float rotAngle = (rand() % 360);
@@ -3030,6 +3083,7 @@ void FillModelMatrices_DR(GLuint dimensions, glm::mat4 *modelMatrices)
 
 			// 4. добавляем в массив матриц
 			modelMatrices[i*dimensions + j] = model;
+			normalMatrices[i*dimensions + j] = glm::transpose(glm::inverse(model));
 		}
 	}
 }
@@ -3074,8 +3128,8 @@ void Gen_DR_VAO(GLuint& DR_VAO, GLuint& DR_VBO)
 }
 
 void Draw_DR_Quad(Shader & lightPassShader, GLuint DR_VAO,
-	GLuint& gPosition, GLuint& gNormal, GLuint& gAlbedoSpec,
-	GLuint& gTangent, GLuint& gBitangent)
+	GLuint& gPosition, GLuint& gModelNormal, GLuint& gMaterialNormal,
+	GLuint& gAlbedoSpec, GLuint& gTangent, GLuint& gBitangent)
 {
 	lightPassShader.UseProgram();
 
@@ -3086,24 +3140,126 @@ void Draw_DR_Quad(Shader & lightPassShader, GLuint DR_VAO,
 	lightPassShader.SetInt("gPosition", 0);
 
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, gNormal);
-	lightPassShader.SetInt("gNormal", 1);
+	glBindTexture(GL_TEXTURE_2D, gModelNormal);
+	lightPassShader.SetInt("gModelNormal", 1);
 
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
-	lightPassShader.SetInt("gAlbedoSpec", 2);
+	glBindTexture(GL_TEXTURE_2D, gMaterialNormal);
+	lightPassShader.SetInt("gMaterialNormal", 2);
 
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, gTangent);
-	lightPassShader.SetInt("gTangent", 3);
+	glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+	lightPassShader.SetInt("gAlbedoSpec", 3);
 
 	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, gTangent);
+	lightPassShader.SetInt("gTangent", 4);
+
+	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_2D, gBitangent);
-	lightPassShader.SetInt("gBitangent", 4);
+	lightPassShader.SetInt("gBitangent", 5);
 	
 	lightPassShader.SetMat4("model", glm::mat4(1.f));
+	lightPassShader.SetVec3("cameraPos", camera.Position);
+
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glBindVertexArray(0);
+}
+
+void UpdateNormalMatricesVAO(Model & model, GLuint amount, glm::mat4 *normalMatrices, GLuint& normalMatricesVBO)
+{
+	// создаем VBO	
+	glGenBuffers(1, &normalMatricesVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, normalMatricesVBO);
+	glBufferData(GL_ARRAY_BUFFER, amount * sizeof(glm::mat4), &normalMatrices[0], GL_STATIC_DRAW);
+
+	for (unsigned int i = 0; i < model.meshes.size(); i++)
+	{
+		unsigned int VAO = model.meshes[i].VAO;
+		glBindVertexArray(VAO);
+		// настройка атрибутов
+		GLsizei vec4Size = sizeof(glm::vec4);
+		glEnableVertexAttribArray(10);
+		glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)0);
+		glEnableVertexAttribArray(11);
+		glVertexAttribPointer(11, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(vec4Size));
+		glEnableVertexAttribArray(12);
+		glVertexAttribPointer(12, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(2 * vec4Size));
+		glEnableVertexAttribArray(13);
+		glVertexAttribPointer(13, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(3 * vec4Size));
+
+		glVertexAttribDivisor(10, 1);
+		glVertexAttribDivisor(11, 1);
+		glVertexAttribDivisor(12, 1);
+		glVertexAttribDivisor(13, 1);
+
+		glBindVertexArray(0);
+	}
+}
+
+void AddPointLights_DR(std::vector<PointLight>& pointLights, std::vector<glm::mat4>& pointLightsModelMatrices,
+	GLfloat areaSize)
+{
+
+	for (int i = 0; i < NUM_POINT_LIGHTS; i++)
+	{
+		float posX = rand() % ((int)areaSize * 10) / 10.f;
+		float posZ = rand() % ((int)areaSize * 10) / 10.f;
+		float colX = rand() % 100 / 100.f;
+		float colY = rand() % 100 / 100.f;
+		float colZ = rand() % 100 / 100.f;
+
+		pointLights.push_back(
+			PointLight(
+				glm::vec4(posX, 0.0f, -posZ, 0.0f),
+				glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
+				glm::vec4(colX, colY, colZ, 1.0f),
+				glm::vec4(colX, colY, colZ, 1.0f)));
+	}
+
+	
+
+	for (GLint i = 0; i < pointLights.size(); i++)
+	{
+		pointLightsModelMatrices.push_back(glm::mat4());
+	}
+
+	SetPointLights(pointLights);
+}
+
+void UpdatePointLights_DR(std::vector<PointLight>& pointLights,
+	std::vector<glm::mat4>& pointLightsModelMatrices,
+	Shader& lampShader, GLuint lampVAO)
+{
+
+	for (int lightId = 0; lightId < pointLights.size(); lightId++)
+	{
+		GLfloat axisCoef = 1.f / (pointLights.size()) * lightId;
+
+		glm::mat4 model(1.0f);
+
+		glm::vec3 lampPosition = pointLights[lightId].position;
+		
+		model = glm::translate(model, lampPosition);
+
+		model = glm::rotate(model, ((GLfloat)glfwGetTime() * glm::radians((float)(rand() % 50 + 25))),
+			glm::vec3(axisCoef, 1.0f - axisCoef, axisCoef));		
+
+		model = glm::translate(model, glm::vec3(axisCoef, axisCoef, axisCoef));
+		model = glm::scale(model, glm::vec3(0.2f));
+
+		glm::vec4 transLightPos = model * glm::vec4(lampPosition, 1.f);
+
+		pointLightsModelMatrices[lightId] = model;
+
+		//Set light position
+		lights.pointLights[lightId].position = transLightPos;
+	}
+
+	lights.UpdateLights();
+
+	DrawPointLights(pointLights, pointLightsModelMatrices,
+		lampShader, lampVAO);
 }

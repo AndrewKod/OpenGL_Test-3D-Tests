@@ -49,7 +49,7 @@ layout (std140) uniform Matrices
     mat4 projection;    
 };
 
-#define NUM_POINT_LIGHTS 16
+#define NUM_POINT_LIGHTS 32
 
 out VS_OUT {
     vec3 gs_normal;
@@ -114,7 +114,13 @@ void main()
 	////////////////NORMAL MAP/////////////////
 	vec3 T = normalize(vec3((bInstancing ? instanceModelMatrix : model) * vec4(tangent,   0.0)));
 	vec3 B = normalize(vec3((bInstancing ? instanceModelMatrix : model) * vec4(bitangent, 0.0)));
-	vec3 N = normalize(vec3((bInstancing ? instanceModelMatrix : model) * vec4(vs_out.fs_normal,    0.0)));
+	vec3 N = normalize(vs_out.fs_normal);
+	//mat3 normalMatrix = transpose(inverse(mat3(model)));
+    //vec3 T = normalize(normalMatrix * tangent);
+	//vec3 N = normalize(normalMatrix * normal);
+    //T = normalize(T - dot(T, N) * N);
+    //vec3 B = cross(N, T);
+
 	mat3 TBN = transpose(mat3(T, B, N));
     vs_out.fs_tanCameraPos  = TBN * cameraPos;
     vs_out.fs_tanFragPos  = TBN * vec3((bInstancing ? instanceModelMatrix : model) * vec4(position, 1.0));//1.0 for correct lightning	

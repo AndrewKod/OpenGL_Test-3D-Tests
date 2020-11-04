@@ -1,10 +1,12 @@
 #version 330 core
 layout (location = 0) out vec3 gPosition;
-layout (location = 1) out vec3 gNormal;
-layout (location = 2) out vec4 gAlbedoSpec;
+layout (location = 1) out vec3 gModelNormal;
+layout (location = 2) out vec3 gMaterialNormal;
+layout (location = 3) out vec4 gAlbedoSpec;
 
-layout (location = 3) out vec3 gTangent;
-layout (location = 4) out vec3 gBitangent;
+layout (location = 4) out vec3 gTangent;
+layout (location = 5) out vec3 gBitangent;
+
 
 #define NUM_TEXTURE_MAPS 16
 #define NUM_POINT_LIGHTS 16 
@@ -46,7 +48,7 @@ void main()
 	
 	vec3 norm = vec3(texture(material.normal[0], texCoords));	
 	norm = normalize(norm * 2.0 - 1.0); 
-	gNormal = norm;
+	gMaterialNormal = norm;
 	//gNormal = fs_in.normal;
 
     gAlbedoSpec.rgb = texture(material.diffuse[0], texCoords).rgb;
@@ -54,6 +56,8 @@ void main()
 	
 	gTangent = fs_in.tangent;
 	gBitangent = fs_in.bitangent;
+
+	gModelNormal = fs_in.normal;
 
 }
 
