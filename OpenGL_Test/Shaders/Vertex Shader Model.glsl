@@ -11,13 +11,7 @@ layout (location = 5) in vec3 bitangent;
 //instanced arrays
 layout (location = 6) in mat4 instanceModelMatrix;
 
-//out vec2 TexCoords;
-//out vec3 Normal;
-//out vec3 Position;
-
 uniform mat4 model;
-//uniform mat4 view;
-//uniform mat4 projection;
 
 uniform bool bInstancing;
 uniform bool bShowNormals;
@@ -49,7 +43,7 @@ layout (std140) uniform Matrices
     mat4 projection;    
 };
 
-#define NUM_POINT_LIGHTS 32
+#define NUM_POINT_LIGHTS 16
 
 out VS_OUT {
     vec3 gs_normal;
@@ -66,7 +60,6 @@ out VS_OUT {
 	vec3 fs_tanCameraPos;
 	vec3 fs_tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 fs_tanDirLightDirection;
-	vec4 fs_tanFragPosDirLightSpace;
 	vec3 fs_tanSpotLightDirection;
 
 } vs_out;
@@ -114,12 +107,7 @@ void main()
 	////////////////NORMAL MAP/////////////////
 	vec3 T = normalize(vec3((bInstancing ? instanceModelMatrix : model) * vec4(tangent,   0.0)));
 	vec3 B = normalize(vec3((bInstancing ? instanceModelMatrix : model) * vec4(bitangent, 0.0)));
-	vec3 N = normalize(vs_out.fs_normal);
-	//mat3 normalMatrix = transpose(inverse(mat3(model)));
-    //vec3 T = normalize(normalMatrix * tangent);
-	//vec3 N = normalize(normalMatrix * normal);
-    //T = normalize(T - dot(T, N) * N);
-    //vec3 B = cross(N, T);
+	vec3 N = normalize(vs_out.fs_normal);	
 
 	mat3 TBN = transpose(mat3(T, B, N));
     vs_out.fs_tanCameraPos  = TBN * cameraPos;
@@ -130,7 +118,7 @@ void main()
 	}
 
 	vs_out.fs_tanDirLightDirection = TBN * vec3(dirLightDirection);
-
+		
 	//vs_out.fs_tanFragPosDirLightSpace = mat4(TBN) * vs_out.fs_fragPosDirLightSpace;
 
 	vs_out.fs_tanSpotLightDirection = TBN * vec3(spotLightDirection);

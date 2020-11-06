@@ -3,7 +3,7 @@ layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;
 
 #define NUM_TEXTURE_MAPS 16
-#define NUM_POINT_LIGHTS 32 
+#define NUM_POINT_LIGHTS 16 
 
 struct Material {
     /*vec3 ambient;*//*ambient in most of cases matches with diffuse*/
@@ -87,7 +87,6 @@ in GS_OUT {
 	vec3 tanCameraPos;
 	vec3 tanPointLightPositions[NUM_POINT_LIGHTS];
 	vec3 tanDirLightDirection;
-	vec4 tanFragPosDirLightSpace;
 	vec3 tanSpotLightDirection;
 
 } fs_in;

@@ -2,12 +2,10 @@
 layout (triangles) in;
 layout (line_strip, max_vertices = 6) out;
 
-in VS_OUT {
-    vec3 gs_normal;
+#define NUM_POINT_LIGHTS 16
 
-	vec2 fs_texCoords;
-	vec3 fs_normal;
-	vec3 fs_position;
+in VS_OUT {
+    vec3 gs_normal;	
 
 } gs_in[];
 

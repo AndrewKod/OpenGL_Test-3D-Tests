@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 
 #include "Shader.h"
 #include "Camera.h"
@@ -205,7 +206,7 @@ struct PointLight
 		GLint bEnabled = true, float constant = 1.0f, float linear = 0.007f, float quadratic = 0.0002f)
 	{
 		this->position = position;
-
+		
 		this->ambient = ambient;
 		this->diffuse = diffuse;
 		this->specular = specular;
@@ -221,12 +222,14 @@ struct PointLight
 
 GLsizeiptr CalcStructSizeUBO(GLsizeiptr structSize);
 
-#define NUM_POINT_LIGHTS 32
+#define NUM_POINT_LIGHTS 16
 
 GLuint lightsUBO = 0;
 GLuint pointLightPositionsUBO = 0;
 GLuint dirLightDirectionUBO = 0;
 GLuint spotLightDirectionUBO = 0;
+GLuint pointLightRadiusUBO = 0;
+float pointLightRadiuses[NUM_POINT_LIGHTS];
 struct Lights
 {
 	DirectionalLight directionalLight;
@@ -249,6 +252,8 @@ struct Lights
 		GLint spotLightOffset = dirLightSize;
 		GLint pointLightOffset = dirLightSize + spotLightSize;
 				
+		GLint maxSize = GL_MAX_UNIFORM_BLOCK_SIZE;
+
 		//update lights UBOs
 		glBindBuffer(GL_UNIFORM_BUFFER, lightsUBO);		
 		
@@ -281,6 +286,14 @@ struct Lights
 }
 lights;
 
+void UpdatePointLightRadiusUBO()
+{
+	glBindBuffer(GL_UNIFORM_BUFFER, pointLightRadiusUBO);
+
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(pointLightRadiuses), &pointLightRadiuses[0]);
+
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
 
 
 void UpdateMatrices(const GLuint& uboBlock);
@@ -517,8 +530,7 @@ int main()
 
 	Shader geomPassShader("Shaders/Geometry Pass VS.glsl", "Shaders/Geometry Pass FS.glsl");
 	Shader lightPassShader("Shaders/Lightning Pass VS.glsl", "Shaders/Lightning Pass FS.glsl");
-	Shader lampShader("Shaders/Vertex Shader Model.glsl", "Shaders/Fragment Shader Model.glsl",
-		"Shaders/Geometry Shader Model.glsl");
+	Shader lampShader("Shaders/Single Color VS.glsl", "Shaders/Single Color FS.glsl");
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
 	unsigned int uboBlock;
@@ -604,6 +616,7 @@ int main()
 
 	modelShader.BindUniformBuffer("PointLightPositions", 3);
 	skullShader.BindUniformBuffer("PointLightPositions", 3);
+	lightPassShader.BindUniformBuffer("PointLightPositions", 3);
 
 	glGenBuffers(1, &dirLightDirectionUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, dirLightDirectionUBO);
@@ -636,6 +649,21 @@ int main()
 
 	modelShader.BindUniformBuffer("SpotLightDirection", 5);
 	skullShader.BindUniformBuffer("SpotLightDirection", 5);
+
+	glGenBuffers(1, &pointLightRadiusUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, pointLightRadiusUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(pointLightRadiuses), NULL, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBufferBase(
+		GL_UNIFORM_BUFFER,
+		6,							//binding point
+		pointLightRadiusUBO);		//uniform buffer ID
+
+	lightPassShader.BindUniformBuffer(
+		"PointLightRadiuses",		//uniform block name
+		6);							//binding point
+
+	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -894,10 +922,6 @@ int main()
 
 		if (settings.bDeferredRendering)
 		{
-			SetPointLights(pointLights_DR);
-
-			UpdatePointLights_DR(pointLights_DR, pointLightsModelMatrices_DR, lampShader, cubeVAO);
-
 			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -918,10 +942,29 @@ int main()
 			Draw_DR_Quad(lightPassShader, DR_VAO,
 				gPosition, gModelNormal, gMaterialNormal,
 				gAlbedoSpec, gTangent, gBitangent);
+
+			//copy depth buffer from gBuffer into default frame buffer
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // буфер глубины по-умолчанию
+			glBlitFramebuffer(
+				0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST
+			);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			SetPointLights(pointLights_DR);
+			UpdatePointLights_DR(pointLights_DR, pointLightsModelMatrices_DR, lampShader, cubeVAO);
+
+			lightPassShader.UseProgram();
+			for (int i = 0; i < NUM_POINT_LIGHTS; i++)
+			{
+				char num[3];
+				_itoa_s(i, num, 10);
+				lightPassShader.SetVec4(std::string("positions[") + num + "]", lights.pointLights[i].position);
+			}
 		}
 		else
 		{
-			SetPointLights(pointLights);
+			
 
 			//if shadows aren't drawing - use default parameters for functions calls
 			GLuint dirLightDepthMapTexID = 0;
@@ -1123,9 +1166,13 @@ int main()
 				DrawPostProc(postProcShader, postProcVAO, textureColorbuffer, textureColorbufferMS, screenBlitTexture);
 
 
-			//////////////////////////////////////LIGHTS//////////////////////////////////
+			//////////////////////////////////////LIGHTS//////////////////////////////////			
+
 			if (settings.bPointLights)
+			{
+				SetPointLights(pointLights);
 				UpdatePointLights(pointLights, pointLightsModelMatrices, shader, cubeVAO);
+			}
 
 			if (settings.bSpotLight)
 				UpdateSpotLight();
@@ -2661,6 +2708,7 @@ void UpdatePointLights(std::vector<PointLight>& pointLights,
 
 		//Set light position
 		lights.pointLights[lightId].position = transLightPos;
+		//pointLights[lightId].currPosition = transLightPos;
 	}
 
 	lights.UpdateLights();
@@ -2676,8 +2724,6 @@ void DrawPointLights(std::vector<PointLight>& pointLights,
 	for (int lightId = 0; lightId < pointLights.size(); lightId++)
 	{
 		glm::mat4 model = pointLightsModelMatrices[lightId];
-		
-
 
 		//Draw Lamp
 		lampShader.UseProgram();
@@ -3211,15 +3257,32 @@ void AddPointLights_DR(std::vector<PointLight>& pointLights, std::vector<glm::ma
 		float colY = rand() % 100 / 100.f;
 		float colZ = rand() % 100 / 100.f;
 
-		pointLights.push_back(
-			PointLight(
-				glm::vec4(posX, 0.0f, -posZ, 0.0f),
-				glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
-				glm::vec4(colX, colY, colZ, 1.0f),
-				glm::vec4(colX, colY, colZ, 1.0f)));
+		PointLight pointLight(
+			glm::vec4(posX, 0.0f, -posZ, 0.0f),
+			glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
+			glm::vec4(colX, colY, colZ, 1.0f),
+			glm::vec4(colX, colY, colZ, 1.0f));
+
+		
+		pointLight.linear = 0.7;
+		pointLight.constant = 1.0;
+		pointLight.quadratic = 1.8;
+
+		pointLights.push_back(pointLight);
+
+		float lightMax = 
+			std::fmaxf(std::fmaxf(pointLight.diffuse.r, pointLight.diffuse.g), pointLight.diffuse.b);
+		float radius =
+			(-pointLight.linear + 
+				std::sqrtf(pointLight.linear * pointLight.linear - 4 * pointLight.quadratic * 
+				(pointLight.constant - (256.0 / 5.0) * lightMax)))
+			/ (2 * pointLight.quadratic);
+
+		pointLightRadiuses[i] = 3.f;
+
 	}
 
-	
+	UpdatePointLightRadiusUBO();
 
 	for (GLint i = 0; i < pointLights.size(); i++)
 	{
@@ -3240,22 +3303,28 @@ void UpdatePointLights_DR(std::vector<PointLight>& pointLights,
 
 		glm::mat4 model(1.0f);
 
-		glm::vec3 lampPosition = pointLights[lightId].position;
+		glm::vec3 lampPosition = pointLights[lightId].position;		
 		
 		model = glm::translate(model, lampPosition);
+		
+		float angle = (GLfloat)glfwGetTime() * glm::radians(30.f);
+		glm::vec3 axis = glm::vec3(axisCoef, 1 - axisCoef, axisCoef);
+		model = glm::rotate(model, angle, axis);
 
-		model = glm::rotate(model, ((GLfloat)glfwGetTime() * glm::radians((float)(rand() % 50 + 25))),
-			glm::vec3(axisCoef, 1.0f - axisCoef, axisCoef));		
-
-		model = glm::translate(model, glm::vec3(axisCoef, axisCoef, axisCoef));
+		
+		model = glm::translate(model, glm::vec3(0.0, 2.0, 0.0));
 		model = glm::scale(model, glm::vec3(0.2f));
 
-		glm::vec4 transLightPos = model * glm::vec4(lampPosition, 1.f);
+		glm::vec4 transLightPos = glm::vec4(
+			 lampPosition + glm::rotate((glm::vec3(0.0, 2.0, 0.0)), angle, axis)
+			, 1.f);
+		transLightPos = glm::vec4(5 * lightId, 2.0, -5 * lightId, 1.0);
 
 		pointLightsModelMatrices[lightId] = model;
 
 		//Set light position
 		lights.pointLights[lightId].position = transLightPos;
+		
 	}
 
 	lights.UpdateLights();

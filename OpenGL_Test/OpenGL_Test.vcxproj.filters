@@ -35,9 +35,6 @@
     <None Include="Shaders\Vertex Shader.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\Single Color Shader.glsl">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="Shaders\Vertex Shader PP.glsl">
       <Filter>Shaders</Filter>
     </None>
@@ -96,6 +93,12 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Lightning Pass VS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Single Color FS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Single Color VS.glsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

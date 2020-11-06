@@ -223,13 +223,13 @@ public:
 		
 
 		glGetProgramiv(ID, GL_ACTIVE_UNIFORMS, &count);
-		printf("Active Uniforms: %d\n", count);
+		//printf("Active Uniforms: %d\n", count);
 
 		for (GLuint i = 0; i < count; i++)
 		{
 			glGetActiveUniform(ID, i, bufSize, &length, &size, &type, name);
 
-			printf("Uniform #%d Type: %u Name: %s\n", i, type, name);
+			//printf("Uniform #%d Type: %u Name: %s\n", i, type, name);
 
 			 
 
