@@ -229,7 +229,7 @@ GLuint pointLightPositionsUBO = 0;
 GLuint dirLightDirectionUBO = 0;
 GLuint spotLightDirectionUBO = 0;
 GLuint pointLightRadiusUBO = 0;
-float pointLightRadiuses[NUM_POINT_LIGHTS];
+glm::vec4 pointLightRadiuses[NUM_POINT_LIGHTS];
 struct Lights
 {
 	DirectionalLight directionalLight;
@@ -615,8 +615,7 @@ int main()
 		3);				//binding point
 
 	modelShader.BindUniformBuffer("PointLightPositions", 3);
-	skullShader.BindUniformBuffer("PointLightPositions", 3);
-	lightPassShader.BindUniformBuffer("PointLightPositions", 3);
+	skullShader.BindUniformBuffer("PointLightPositions", 3);	
 
 	glGenBuffers(1, &dirLightDirectionUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, dirLightDirectionUBO);
@@ -3264,9 +3263,9 @@ void AddPointLights_DR(std::vector<PointLight>& pointLights, std::vector<glm::ma
 			glm::vec4(colX, colY, colZ, 1.0f));
 
 		
-		pointLight.linear = 0.7;
 		pointLight.constant = 1.0;
-		pointLight.quadratic = 1.8;
+		pointLight.linear = 0.07;
+		pointLight.quadratic = 0.08;
 
 		pointLights.push_back(pointLight);
 
@@ -3278,7 +3277,7 @@ void AddPointLights_DR(std::vector<PointLight>& pointLights, std::vector<glm::ma
 				(pointLight.constant - (256.0 / 5.0) * lightMax)))
 			/ (2 * pointLight.quadratic);
 
-		pointLightRadiuses[i] = 3.f;
+		pointLightRadiuses[i] = glm::vec4(radius);
 
 	}
 
@@ -3318,7 +3317,7 @@ void UpdatePointLights_DR(std::vector<PointLight>& pointLights,
 		glm::vec4 transLightPos = glm::vec4(
 			 lampPosition + glm::rotate((glm::vec3(0.0, 2.0, 0.0)), angle, axis)
 			, 1.f);
-		transLightPos = glm::vec4(5 * lightId, 2.0, -5 * lightId, 1.0);
+		//transLightPos = glm::vec4(5 * lightId, 2.0, -5 * lightId, 1.0);
 
 		pointLightsModelMatrices[lightId] = model;
 

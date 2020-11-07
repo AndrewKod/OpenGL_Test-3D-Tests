@@ -50,15 +50,10 @@ layout (std140) uniform Lights
 
 layout (std140) uniform PointLightRadiuses
 {
-	float pointLightRadiuses[NUM_POINT_LIGHTS];
+	vec4 pointLightRadiuses[NUM_POINT_LIGHTS];
 };
 
-layout (std140) uniform PointLightPositions
-{
-	vec4 pointLightPositions[NUM_POINT_LIGHTS];
-};
 
-uniform vec4 positions[NUM_POINT_LIGHTS];
 
 out vec4 FragColor;
   
@@ -104,17 +99,17 @@ void main()
 
 	for(int lightId = 0; lightId < NUM_POINT_LIGHTS; lightId++)
 	{			
-		float dist = length(TBN * vec3(positions[lightId]) - FragPos);
-        if(dist < pointLightRadiuses[lightId])
+		float dist = length(TBN * vec3(pointLights[lightId].position) - FragPos);
+        if(dist < pointLightRadiuses[lightId].r)
         {
-			col += vec4(1.0);
+			//col += vec4(1.0);
 			//vec3 lightDir = normalize(TBN * vec3(pointLights[lightId].position) - FragPos);
 			//vec3 diffuse = max(dot(MaterialNormal, lightDir), 0.0) * Albedo * vec3(pointLights[lightId].diffuse);
 			//col += vec4(diffuse, 0.0);
 
-//			vec3 pointLightColor = 
-//				CalcPointLight(lightId, MaterialNormal, viewDir, Albedo, vec3(Specular), FragPos, TBN);
-//			col += vec4(pointLightColor, 1.0);
+			vec3 pointLightColor = 
+				CalcPointLight(lightId, MaterialNormal, viewDir, Albedo, vec3(Specular), FragPos, TBN);
+			col += vec4(pointLightColor, 1.0);
 		}
 	}	
 
@@ -158,10 +153,12 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 	if(!pointLights[lightId].bEnabled)
 		return vec3(0.f);
 	
-	vec3 PointLightPosition =TBN * vec3(pointLights[lightId].position);
+	vec3 PointLightPosition = TBN * vec3(pointLights[lightId].position);
 
 	/*Point Light Fading*/
 	float dist = length(vec3(PointLightPosition) - FragPos);	
+//	if(dist < pointLightRadiuses[lightId].r)
+//		return  vec3(0.f);
 
 	float attenuation = 1.0 / (pointLights[lightId].constant + pointLights[lightId].linear * dist + 
     		    pointLights[lightId].quadratic * (dist * dist));

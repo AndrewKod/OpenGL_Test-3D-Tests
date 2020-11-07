@@ -3,37 +3,37 @@ d:\андро\программирование\мои проекты\opengl_test
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\shader.h(228): warning C4018: '<': signed/unsigned mismatch
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(37): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(38): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(915): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1087): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1115): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1140): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1211): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(914): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1086): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1114): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1139): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1210): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1548): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1549): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1550): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1553): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1554): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1555): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1556): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1557): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1558): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1567): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1694): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1707): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1795): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1881): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2494): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2513): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2517): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2642): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2652): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2689): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2724): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2754): warning C4244: '=': conversion from 'GLfloat' to 'GLsizeiptr', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3116): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3118): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3120): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3127): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1566): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1693): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1706): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1794): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(1880): warning C4244: 'initializing': conversion from 'int' to 'GLfloat', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2493): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2512): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2516): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2641): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2651): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2688): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2723): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(2753): warning C4244: '=': conversion from 'GLfloat' to 'GLsizeiptr', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3115): warning C4244: 'argument': conversion from 'double' to 'unsigned int', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3117): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3119): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3126): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
 d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3267): warning C4305: '=': truncation from 'double' to 'GLfloat'
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3269): warning C4305: '=': truncation from 'double' to 'GLfloat'
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3277): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3287): warning C4018: '<': signed/unsigned mismatch
-d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3300): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3268): warning C4305: '=': truncation from 'double' to 'GLfloat'
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3276): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3286): warning C4018: '<': signed/unsigned mismatch
+d:\андро\программирование\мои проекты\opengl_test 3d tests\opengl_test\source.cpp(3299): warning C4018: '<': signed/unsigned mismatch
   OpenGL_Test.vcxproj -> D:\Андро\Программирование\МОИ ПРОЕКТЫ\OpenGL_Test 3D Tests\Debug\OpenGL_Test.exe
