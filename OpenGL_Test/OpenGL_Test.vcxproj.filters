@@ -101,6 +101,15 @@
     <None Include="Shaders\Single Color VS.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\AO FS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\AO VS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\AO Blur FS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">

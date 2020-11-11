@@ -137,6 +137,9 @@
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shaders\AO Blur FS.glsl" />
+    <None Include="Shaders\AO FS.glsl" />
+    <None Include="Shaders\AO VS.glsl" />
     <None Include="Shaders\Blur FS.glsl" />
     <None Include="Shaders\Blur VS.glsl" />
     <None Include="Shaders\Cubemap Fragment Shader.glsl" />

@@ -13,6 +13,7 @@
 #include "Model.h"
 
 #include <iostream>
+#include <random>
 
 
 
@@ -424,7 +425,8 @@ void Gen_DR_VAO(GLuint& DR_VAO, GLuint& DR_VBO);
 
 void Draw_DR_Quad(Shader & lightPassShader, GLuint DR_VAO,
 	GLuint& gPosition, GLuint& gModelNormal, GLuint& gMaterialNormal,
-	GLuint& gAlbedoSpec, GLuint& gTangent, GLuint& gBitangent);
+	GLuint& gAlbedoSpec, GLuint& gTangent, GLuint& gBitangent,
+	GLuint& ssaoColorBuffer);
 
 void UpdateNormalMatricesVAO(Model & model, GLuint amount, glm::mat4 *normalMatrices, GLuint& normalMatricesVBO);
 
@@ -434,6 +436,23 @@ void AddPointLights_DR(std::vector<PointLight>& pointLights, std::vector<glm::ma
 void UpdatePointLights_DR(std::vector<PointLight>& pointLights,
 	std::vector<glm::mat4>& pointLightsModelMatrices,
 	Shader& lampShader, GLuint lampVAO);
+
+float lerp(float a, float b, float f)
+{
+	return a + f * (b - a);
+}
+
+void Gen_AO_Kernel(std::vector<glm::vec3>& ssaoKernel);
+void Gen_AO_NoiseTexture(GLuint& noiseTexture);
+void Gen_AO_FBO(GLuint& ssaoFBO, GLuint& ssaoColorBuffer);
+void Gen_AO_BlurFBO(GLuint& ssaoBlurFBO, GLuint& ssaoColorBufferBlur);
+
+void Draw_AO_Quad(Shader & AO_Shader, GLuint AO_VAO,
+	GLuint& gPosition, GLuint& gNormal,
+	GLuint& gTangent, GLuint& gBitangent,
+	GLuint& noiseTexture, std::vector<glm::vec3>& ssaoKernel);
+void Draw_AO_Blur_Quad(Shader & AO_Shader, GLuint AO_VAO,
+	GLuint& ssaoColorBuffer);
 ///////////////////////////////////////////////////////////////////////////////////////
 
 int main()
@@ -531,6 +550,9 @@ int main()
 	Shader geomPassShader("Shaders/Geometry Pass VS.glsl", "Shaders/Geometry Pass FS.glsl");
 	Shader lightPassShader("Shaders/Lightning Pass VS.glsl", "Shaders/Lightning Pass FS.glsl");
 	Shader lampShader("Shaders/Single Color VS.glsl", "Shaders/Single Color FS.glsl");
+
+	Shader AO_Shader("Shaders/AO VS.glsl", "Shaders/AO FS.glsl");
+	Shader AO_Blur_Shader("Shaders/AO VS.glsl", "Shaders/AO Blur FS.glsl");
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
 	unsigned int uboBlock;
@@ -905,6 +927,22 @@ int main()
 
 	///////////////////////////////////////////////////////////////////////////////////
 
+
+	////////////////////////////////////AO////////////////////////////////////
+	std::vector<glm::vec3> ssaoKernel;
+	GLuint noiseTexture = 0;
+	Gen_AO_Kernel(ssaoKernel);
+	Gen_AO_NoiseTexture(noiseTexture);
+
+	GLuint ssaoFBO = 0;	
+	GLuint ssaoColorBuffer = 0;
+	Gen_AO_FBO(ssaoFBO, ssaoColorBuffer);
+
+	GLuint ssaoBlurFBO = 0, ssaoColorBufferBlur = 0;
+	Gen_AO_BlurFBO(ssaoBlurFBO, ssaoColorBufferBlur);
+
+	//////////////////////////////////////////////////////////////////////////
+
     // render loop
     // -----------
 	while (!glfwWindowShouldClose(window))
@@ -926,6 +964,7 @@ int main()
 
 			UpdateMatrices(uboBlock);
 
+			//////////////////////////////gBuffer////////////////////////////////
 			glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
 
 			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -938,9 +977,35 @@ int main()
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+			///////////////////////////////AO//////////////////////////////
+			glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+			Draw_AO_Quad(AO_Shader, DR_VAO,
+				gPosition, gModelNormal,
+				gTangent, gBitangent,
+				noiseTexture, ssaoKernel);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+			Draw_AO_Blur_Quad(AO_Blur_Shader, DR_VAO,
+				ssaoColorBuffer);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+			///////////////////////SCENE////////////////////////
+
 			Draw_DR_Quad(lightPassShader, DR_VAO,
 				gPosition, gModelNormal, gMaterialNormal,
-				gAlbedoSpec, gTangent, gBitangent);
+				gAlbedoSpec, gTangent, gBitangent, ssaoColorBuffer);
 
 			//copy depth buffer from gBuffer into default frame buffer
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
@@ -1223,6 +1288,9 @@ int main()
 	glDeleteVertexArrays(1, &DR_VAO);
 	glDeleteBuffers(1, &DR_VBO);
 	///////////////////////////////////////////////////////////////////////
+
+	glDeleteFramebuffers(1, &ssaoFBO);
+	glDeleteFramebuffers(1, &ssaoBlurFBO);
 
     glfwTerminate();
     return 0;
@@ -3126,9 +3194,13 @@ void FillModelMatrices_DR(GLuint dimensions, GLfloat scale, glm::mat4 *modelMatr
 			float rotAngle = (rand() % 360);
 			model = glm::rotate(model, rotAngle, glm::vec3(0.4f, 0.6f, 0.8f));
 
+			//glm::mat4 view = camera.GetViewMatrix();
+
 			// 4. добавляем в массив матриц
-			modelMatrices[i*dimensions + j] = model;
-			normalMatrices[i*dimensions + j] = glm::transpose(glm::inverse(model));
+			modelMatrices[i*dimensions + j] = /*view **/ model;
+
+			
+			normalMatrices[i*dimensions + j] = glm::transpose(glm::inverse(/*view * */model));
 		}
 	}
 }
@@ -3174,7 +3246,8 @@ void Gen_DR_VAO(GLuint& DR_VAO, GLuint& DR_VBO)
 
 void Draw_DR_Quad(Shader & lightPassShader, GLuint DR_VAO,
 	GLuint& gPosition, GLuint& gModelNormal, GLuint& gMaterialNormal,
-	GLuint& gAlbedoSpec, GLuint& gTangent, GLuint& gBitangent)
+	GLuint& gAlbedoSpec, GLuint& gTangent, GLuint& gBitangent,
+	GLuint& ssaoColorBuffer)
 {
 	lightPassShader.UseProgram();
 
@@ -3203,8 +3276,11 @@ void Draw_DR_Quad(Shader & lightPassShader, GLuint DR_VAO,
 	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_2D, gBitangent);
 	lightPassShader.SetInt("gBitangent", 5);
+
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
+	lightPassShader.SetInt("ssaoColorBuffer", 6);
 	
-	lightPassShader.SetMat4("model", glm::mat4(1.f));
 	lightPassShader.SetVec3("cameraPos", camera.Position);
 
 
@@ -3330,4 +3406,159 @@ void UpdatePointLights_DR(std::vector<PointLight>& pointLights,
 
 	DrawPointLights(pointLights, pointLightsModelMatrices,
 		lampShader, lampVAO);
+}
+
+void Gen_AO_Kernel(std::vector<glm::vec3>& ssaoKernel)
+{
+	std::uniform_real_distribution<GLfloat> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
+	std::default_random_engine generator;
+	for (unsigned int i = 0; i < 64; ++i)
+	{
+		glm::vec3 sample(
+			randomFloats(generator) * 2.0 - 1.0,
+			randomFloats(generator) * 2.0 - 1.0,
+			randomFloats(generator)
+		);
+		sample = glm::normalize(sample);
+		sample *= randomFloats(generator);
+		float scale = float(i) / 64.0;
+
+		// scale samples s.t. they're more aligned to center of kernel
+		scale = lerp(0.1f, 1.0f, scale * scale);
+		sample *= scale;
+		ssaoKernel.push_back(sample);
+	}
+}
+
+void Gen_AO_NoiseTexture(GLuint& noiseTexture)
+{
+	std::uniform_real_distribution<GLfloat> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
+	std::default_random_engine generator;
+
+	// generate noise texture
+	// ----------------------
+	std::vector<glm::vec3> ssaoNoise;
+	for (unsigned int i = 0; i < 16; i++)
+	{
+		// rotate around z-axis (in tangent space)
+		glm::vec3 noise(
+			randomFloats(generator) * 2.0 - 1.0,
+			randomFloats(generator) * 2.0 - 1.0,
+			0.0f);
+		ssaoNoise.push_back(noise);
+	}
+
+	glGenTextures(1, &noiseTexture);
+	glBindTexture(GL_TEXTURE_2D, noiseTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssaoNoise[0]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+}
+
+void Gen_AO_FBO(GLuint& ssaoFBO, GLuint& ssaoColorBuffer)
+{	
+	glGenFramebuffers(1, &ssaoFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+
+	glGenTextures(1, &ssaoColorBuffer);
+	glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorBuffer, 0);
+
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		cout << "ERROR::FRAMEBUFFER::" << Status << endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Gen_AO_BlurFBO(GLuint& ssaoBlurFBO, GLuint& ssaoColorBufferBlur)
+{
+	glGenFramebuffers(1, &ssaoBlurFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+
+	glGenTextures(1, &ssaoColorBufferBlur);
+	glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorBufferBlur, 0);
+
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		cout << "ERROR::FRAMEBUFFER::" << Status << endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Draw_AO_Quad(Shader & AO_Shader, GLuint AO_VAO,
+	GLuint& gPosition, GLuint& gNormal,
+	GLuint& gTangent, GLuint& gBitangent,
+	GLuint& noiseTexture, std::vector<glm::vec3>& ssaoKernel)
+{
+	AO_Shader.UseProgram();
+
+	glBindVertexArray(AO_VAO);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, gPosition);
+	AO_Shader.SetInt("gPosition", 0);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, gNormal);
+	AO_Shader.SetInt("gNormal", 1);	
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, gTangent);
+	AO_Shader.SetInt("gTangent", 2);
+
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, gBitangent);
+	AO_Shader.SetInt("gBitangent", 3);
+	
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, noiseTexture);
+	AO_Shader.SetInt("texNoise", 4);
+
+	glm::mat4 projection = 
+		glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+	glm::mat4 view = camera.GetViewMatrix();
+
+	AO_Shader.SetMat4("projection", projection);
+	AO_Shader.SetMat4("view", view);
+	
+	for (int i = 0; i < ssaoKernel.size(); i++)
+	{
+		char num[4];
+		_itoa_s(i, num, 10);
+		AO_Shader.SetVec3(std::string("samples[") + num + "]", ssaoKernel[i]);
+	}
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glBindVertexArray(0);
+}
+
+void Draw_AO_Blur_Quad(Shader & AO_Shader, GLuint AO_VAO,
+	GLuint& ssaoColorBuffer)
+{
+	AO_Shader.UseProgram();
+
+	glBindVertexArray(AO_VAO);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
+	AO_Shader.SetInt("ssaoInput", 0);
+
+	
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glBindVertexArray(0);
 }

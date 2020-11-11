@@ -42,8 +42,8 @@ void main()
 	vs_out.tangent = normalize(vec3(instanceNormalMatrix * vec4(tangent, 1.0)));
 	vs_out.bitangent = normalize(vec3(instanceNormalMatrix * vec4(bitangent, 1.0)));	
 
-	mat3 TBN = transpose(mat3(vs_out.tangent, vs_out.bitangent, vs_out.normal));
+	//mat3 TBN = transpose(mat3(vs_out.tangent, vs_out.bitangent, vs_out.normal));
 
-    vs_out.fragPos  = TBN * (vec3(instanceModelMatrix * vec4(position, 1.0)));//1.0 for correct lightning		
+    vs_out.fragPos  = (vec3(instanceModelMatrix * vec4(position, 1.0)));//1.0 for correct lightning		
 	
 }
