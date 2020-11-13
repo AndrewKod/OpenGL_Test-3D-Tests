@@ -37,6 +37,8 @@ in VS_OUT {
 
 } fs_in;
 
+
+
 uniform bool binvertUVs = false; 
 
 void main()
@@ -46,9 +48,9 @@ void main()
 
 	gPosition = fs_in.fragPos;
 	
-	vec3 norm = vec3(texture(material.normal[0], texCoords));	
+	vec4 norm = texture(material.normal[0], texCoords);	
 	norm = normalize(norm * 2.0 - 1.0); 
-	gMaterialNormal = norm;
+	gMaterialNormal = norm.rgb;
 	//gNormal = fs_in.normal;
 
     gAlbedoSpec.rgb = texture(material.diffuse[0], texCoords).rgb;

@@ -53,7 +53,11 @@ layout (std140) uniform PointLightRadiuses
 	vec4 pointLightRadiuses[NUM_POINT_LIGHTS];
 };
 
-
+layout (std140) uniform Matrices
+{
+	mat4 view;
+    mat4 projection;    
+};
 
 out vec4 FragColor;
   
@@ -75,8 +79,10 @@ vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularCol
 vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor,
 	vec3 FragPos, mat3 TBN, float AO);
 
+bool bViewSpace = true;
+
 void main()
-{ 	
+{ 		
 	vec3 FragPos = texture(gPosition, TexCoords).rgb;
     vec3 ModelNormal = texture(gModelNormal, TexCoords).rgb;
 	vec3 MaterialNormal = texture(gMaterialNormal, TexCoords).rgb;
@@ -86,22 +92,27 @@ void main()
 	vec3 Tangent = texture(gTangent, TexCoords).rgb;
     vec3 Bitangent = texture(gBitangent, TexCoords).rgb;
 	float AO = texture(ssaoColorBuffer, TexCoords).r;
-
+	
 	vec4 col = vec4(0.0);	
 
 	mat3 TBN = transpose(mat3(Tangent, Bitangent, ModelNormal));   
-	mat3 transTBN = mat3(Tangent, Bitangent, ModelNormal);
 	
 	FragPos = TBN * FragPos;
-
-	vec3 viewDir = normalize(TBN * cameraPos - FragPos);//FragPos is already in tangent space
-
+	vec3 viewDir = vec3(0.0);
+	if(bViewSpace)
+		viewDir = normalize(TBN * vec3(view* vec4(cameraPos, 1.0)) - FragPos);//FragPos is already in tangent space
+	else
+		viewDir = normalize(TBN * cameraPos - FragPos);
 	//vec3 dirLigtColor = CalcDirLight(MaterialNormal, viewDir, Albedo, vec3(Specular), TBN, AO);
 	//col += vec4(dirLigtColor, 1.0);
 
 	for(int lightId = 0; lightId < NUM_POINT_LIGHTS; lightId++)
 	{			
-		float dist = length(TBN * vec3(pointLights[lightId].position) - FragPos);
+		float dist = 0.0;
+		if(bViewSpace)
+			dist = length(TBN * vec3(view * pointLights[lightId].position) - FragPos);
+		else
+			dist = length(TBN * vec3(pointLights[lightId].position) - FragPos);
         if(dist < pointLightRadiuses[lightId].r)
         {
 			//col += vec4(1.0);
@@ -115,13 +126,17 @@ void main()
 		}
 	}	
 
-	FragColor = vec4(AO);
-	//FragColor = col;
+	//FragColor = vec4(AO);
+	FragColor = col;
 }
 
 vec3 CalcDirLight(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor, mat3 TBN, float AO)
 {	
-	vec3 directedLightDir = normalize(TBN * vec3(-directionalLight.direction));
+	vec3 directedLightDir = vec3(0.0);
+	if(bViewSpace)
+		directedLightDir = normalize(TBN * vec3(-(view * directionalLight.direction)));
+	else
+		directedLightDir = normalize(TBN * vec3(-(directionalLight.direction)));
 	
     // диффузное освещение
     float diff = max(dot(normal, directedLightDir), 0.0);
@@ -155,7 +170,11 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 	if(!pointLights[lightId].bEnabled)
 		return vec3(0.f);
 	
-	vec3 PointLightPosition = TBN * vec3(pointLights[lightId].position);
+	vec3 PointLightPosition = vec3(0.0);
+	if(bViewSpace)
+		PointLightPosition = TBN * vec3(view * pointLights[lightId].position);
+	else
+		PointLightPosition = TBN * vec3(pointLights[lightId].position);
 
 	/*Point Light Fading*/
 	float dist = length(vec3(PointLightPosition) - FragPos);	

@@ -577,8 +577,10 @@ int main()
 	skullShader.BindUniformBuffer("Matrices", 0);
 
 	geomPassShader.BindUniformBuffer("Matrices", 0);
-
+	lightPassShader.BindUniformBuffer("Matrices", 0);
 	lampShader.BindUniformBuffer("Matrices", 0);
+
+
 	/////////////////////////////////////SETTINGS UNIFORM BUFFER////////////////////////////////////	
 	glGenBuffers(1, &settingsUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, settingsUBO);
@@ -963,11 +965,11 @@ int main()
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 			UpdateMatrices(uboBlock);
-
+			
 			//////////////////////////////gBuffer////////////////////////////////
 			glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
 
-			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 			geomPassShader.UseProgram();		
@@ -980,7 +982,7 @@ int main()
 			///////////////////////////////AO//////////////////////////////
 			glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
 
-			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 			Draw_AO_Quad(AO_Shader, DR_VAO,
@@ -3181,7 +3183,7 @@ void FillModelMatrices_DR(GLuint dimensions, GLfloat scale, glm::mat4 *modelMatr
 	modelMatrices[0] = modelP;
 
 	srand(glfwGetTime()); // задаем seed для генератора случ. чисел
-	;
+	
 	for ( int i = 0; i < dimensions; i++)
 	{
 		for (int j = 0; j < dimensions; j++)
@@ -3200,7 +3202,7 @@ void FillModelMatrices_DR(GLuint dimensions, GLfloat scale, glm::mat4 *modelMatr
 			modelMatrices[i*dimensions + j] = /*view **/ model;
 
 			
-			normalMatrices[i*dimensions + j] = glm::transpose(glm::inverse(/*view * */model));
+			//normalMatrices[i*dimensions + j] = glm::transpose(glm::inverse(view * model));
 		}
 	}
 }
@@ -3334,7 +3336,7 @@ void AddPointLights_DR(std::vector<PointLight>& pointLights, std::vector<glm::ma
 
 		PointLight pointLight(
 			glm::vec4(posX, 0.0f, -posZ, 0.0f),
-			glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
+			glm::vec4(0.3f*colX, 0.3f*colY, 0.3f*colZ, 1.0f),
 			glm::vec4(colX, colY, colZ, 1.0f),
 			glm::vec4(colX, colY, colZ, 1.0f));
 

@@ -32,18 +32,29 @@ layout (std140) uniform Matrices
     mat4 projection;    
 };
 
+bool bViewSpace = true;
+
 void main()
 {
-	gl_Position = projection * view * instanceModelMatrix * vec4(position, 1.0);
+	
 
 	vs_out.texCoords = texCoords;
+	mat4 modelMatrix;
+	if(bViewSpace)
+		modelMatrix = view * instanceModelMatrix;
+	else
+		modelMatrix = instanceModelMatrix;
 
-	vs_out.normal = normalize(vec3(instanceNormalMatrix * vec4(normal, 1.0)));			
-	vs_out.tangent = normalize(vec3(instanceNormalMatrix * vec4(tangent, 1.0)));
-	vs_out.bitangent = normalize(vec3(instanceNormalMatrix * vec4(bitangent, 1.0)));	
+	mat4 normalMatrix = transpose(inverse(modelMatrix));
+
+	vs_out.normal = normalize(vec3(normalMatrix * vec4(normal, 1.0)));			
+	vs_out.tangent = normalize(vec3(normalMatrix * vec4(tangent, 1.0)));
+	vs_out.bitangent = normalize(vec3(normalMatrix * vec4(bitangent, 1.0)));	
 
 	//mat3 TBN = transpose(mat3(vs_out.tangent, vs_out.bitangent, vs_out.normal));
 
-    vs_out.fragPos  = (vec3(instanceModelMatrix * vec4(position, 1.0)));//1.0 for correct lightning		
 	
+    vs_out.fragPos  = (vec3(modelMatrix * vec4(position, 1.0)));//1.0 for correct lightning	
+	
+	gl_Position = projection * modelMatrix * vec4(position, 1.0);
 }
