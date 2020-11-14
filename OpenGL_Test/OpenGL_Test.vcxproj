@@ -83,6 +83,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -140,12 +141,16 @@
     <None Include="Shaders\AO Blur FS.glsl" />
     <None Include="Shaders\AO FS.glsl" />
     <None Include="Shaders\AO VS.glsl" />
+    <None Include="Shaders\Background FS.glsl" />
+    <None Include="Shaders\Background VS.glsl" />
     <None Include="Shaders\Blur FS.glsl" />
     <None Include="Shaders\Blur VS.glsl" />
     <None Include="Shaders\Cubemap Fragment Shader.glsl" />
     <None Include="Shaders\Cubemap Vertex Shader.glsl" />
+    <None Include="Shaders\Cubemap VS.glsl" />
     <None Include="Shaders\Dir Light Depth FS.glsl" />
     <None Include="Shaders\Dir Light Depth VS.glsl" />
+    <None Include="Shaders\Equirectangular To Cubemap FS.glsl" />
     <None Include="Shaders\Fragment Shader Model.glsl" />
     <None Include="Shaders\Fragment Shader PP.glsl" />
     <None Include="Shaders\Fragment Shader.glsl" />
@@ -154,6 +159,7 @@
     <None Include="Shaders\Geometry Shader Model Normals.glsl" />
     <None Include="Shaders\Geometry Shader Model.glsl" />
     <None Include="Shaders\HDR FS.glsl" />
+    <None Include="Shaders\Irradiance Convolution FS.glsl" />
     <None Include="Shaders\Lightning Pass FS.glsl" />
     <None Include="Shaders\Lightning Pass VS.glsl" />
     <None Include="Shaders\PBR FS.glsl" />
