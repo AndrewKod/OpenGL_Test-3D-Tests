@@ -156,6 +156,8 @@
     <None Include="Shaders\HDR FS.glsl" />
     <None Include="Shaders\Lightning Pass FS.glsl" />
     <None Include="Shaders\Lightning Pass VS.glsl" />
+    <None Include="Shaders\PBR FS.glsl" />
+    <None Include="Shaders\PBR VS.glsl" />
     <None Include="Shaders\Point Light Depth FS.glsl" />
     <None Include="Shaders\Point Light Depth GS.glsl" />
     <None Include="Shaders\Point Light Depth VS.glsl" />

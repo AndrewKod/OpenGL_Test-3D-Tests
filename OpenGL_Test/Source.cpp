@@ -455,6 +455,16 @@ void Draw_AO_Blur_Quad(Shader & AO_Shader, GLuint AO_VAO,
 	GLuint& ssaoColorBuffer);
 ///////////////////////////////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////PBR/////////////////////////////////////////
+void Render_PBR_Spheres(Shader& PBR_Shader,
+	GLuint& albedo, GLuint& normal, GLuint& metallic, GLuint& roughness, GLuint& ao,
+	GLint nrRows, GLint nrColumns, GLfloat spacing);
+
+void renderSphere();
+
+
+
+
 int main()
 {
     // glfw: initialize and configure
@@ -553,6 +563,8 @@ int main()
 
 	Shader AO_Shader("Shaders/AO VS.glsl", "Shaders/AO FS.glsl");
 	Shader AO_Blur_Shader("Shaders/AO VS.glsl", "Shaders/AO Blur FS.glsl");
+
+	Shader PBR_Shader("Shaders/PBR VS.glsl", "Shaders/PBR FS.glsl");
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
 	unsigned int uboBlock;
@@ -580,7 +592,7 @@ int main()
 	lightPassShader.BindUniformBuffer("Matrices", 0);
 	lampShader.BindUniformBuffer("Matrices", 0);
 
-
+	PBR_Shader.BindUniformBuffer("Matrices", 0);
 	/////////////////////////////////////SETTINGS UNIFORM BUFFER////////////////////////////////////	
 	glGenBuffers(1, &settingsUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, settingsUBO);
@@ -623,7 +635,7 @@ int main()
 	modelShader.BindUniformBuffer("Lights", 2);
 	skullShader.BindUniformBuffer("Lights", 2);
 	lightPassShader.BindUniformBuffer("Lights", 2);
-
+	PBR_Shader.BindUniformBuffer("Lights", 2);
 
 	glGenBuffers(1, &pointLightPositionsUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, pointLightPositionsUBO);
@@ -685,7 +697,7 @@ int main()
 	lightPassShader.BindUniformBuffer(
 		"PointLightRadiuses",		//uniform block name
 		6);							//binding point
-
+	PBR_Shader.BindUniformBuffer("PointLightRadiuses", 6);
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -945,6 +957,29 @@ int main()
 
 	//////////////////////////////////////////////////////////////////////////
 
+	//////////////////////////////////PBR/////////////////////////////////////
+	PBR_Shader.UseProgram();
+	PBR_Shader.SetInt("albedoMap", 0);
+	PBR_Shader.SetInt("normalMap", 1);
+	PBR_Shader.SetInt("metallicMap", 2);
+	PBR_Shader.SetInt("roughnessMap", 3);
+	PBR_Shader.SetInt("aoMap", 4);
+
+	// load PBR material textures
+	// --------------------------
+	GLuint albedo		= loadTexture("Textures/rustediron/rustediron2_basecolor.png", bLoadSRGB);
+	GLuint normal		= loadTexture("Textures/rustediron/rustediron2_normal.png");
+	GLuint metallic		= loadTexture("Textures/rustediron/rustediron2_metallic.png");
+	GLuint roughness	= loadTexture("Textures/rustediron/rustediron2_roughness.png");
+	GLuint ao			= loadTexture("Textures/rustediron/rustediron2_ao.png");
+
+	
+	int nrRows = 7;
+	int nrColumns = 7;
+	float spacing = 2.5;
+
+	//////////////////////////////////////////////////////////////////////////
+
     // render loop
     // -----------
 	while (!glfwWindowShouldClose(window))
@@ -1027,6 +1062,12 @@ int main()
 				_itoa_s(i, num, 10);
 				lightPassShader.SetVec4(std::string("positions[") + num + "]", lights.pointLights[i].position);
 			}
+
+			///////////////////////////////////PBR/////////////////////////////////
+			Render_PBR_Spheres(PBR_Shader,
+				albedo, normal, metallic, roughness, ao,
+				nrRows, nrColumns, spacing);
+
 		}
 		else
 		{
@@ -3563,4 +3604,137 @@ void Draw_AO_Blur_Quad(Shader & AO_Shader, GLuint AO_VAO,
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glBindVertexArray(0);
+}
+
+void Render_PBR_Spheres(Shader& PBR_Shader, 
+	GLuint& albedo, GLuint& normal, GLuint& metallic, GLuint& roughness, GLuint& ao,
+	GLint nrRows, GLint nrColumns, GLfloat spacing )
+{
+	PBR_Shader.UseProgram();	
+	PBR_Shader.SetVec3("cameraPos", camera.Position);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, albedo);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, normal);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, metallic);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, roughness);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, ao);
+
+	// render rows*column number of spheres with material properties defined by textures (they all have the same material properties)
+	glm::mat4 model = glm::mat4(1.0f);
+	for (int row = 0; row < nrRows; ++row)
+	{
+		for (int col = 0; col < nrColumns; ++col)
+		{
+			model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(
+				(float)(col - (nrColumns / 2)) * spacing,
+				(float)(row - (nrRows / 2)) * spacing,
+				0.0f
+			));
+			PBR_Shader.SetMat4("model", model);
+			renderSphere();
+		}
+	}	
+}
+
+// renders (and builds at first invocation) a sphere
+// -------------------------------------------------
+unsigned int sphereVAO = 0;
+unsigned int indexCount;
+void renderSphere()
+{
+	if (sphereVAO == 0)
+	{
+		glGenVertexArrays(1, &sphereVAO);
+
+		unsigned int vbo, ebo;
+		glGenBuffers(1, &vbo);
+		glGenBuffers(1, &ebo);
+
+		std::vector<glm::vec3> positions;
+		std::vector<glm::vec2> uv;
+		std::vector<glm::vec3> normals;
+		std::vector<unsigned int> indices;
+
+		const unsigned int X_SEGMENTS = 64;
+		const unsigned int Y_SEGMENTS = 64;
+		const float PI = 3.14159265359;
+		for (unsigned int y = 0; y <= Y_SEGMENTS; ++y)
+		{
+			for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
+			{
+				float xSegment = (float)x / (float)X_SEGMENTS;
+				float ySegment = (float)y / (float)Y_SEGMENTS;
+				float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+				float yPos = std::cos(ySegment * PI);
+				float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+
+				positions.push_back(glm::vec3(xPos, yPos, zPos));
+				uv.push_back(glm::vec2(xSegment, ySegment));
+				normals.push_back(glm::vec3(xPos, yPos, zPos));
+			}
+		}
+
+		bool oddRow = false;
+		for (unsigned int y = 0; y < Y_SEGMENTS; ++y)
+		{
+			if (!oddRow) // even rows: y == 0, y == 2; and so on
+			{
+				for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
+				{
+					indices.push_back(y       * (X_SEGMENTS + 1) + x);
+					indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+				}
+			}
+			else
+			{
+				for (int x = X_SEGMENTS; x >= 0; --x)
+				{
+					indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+					indices.push_back(y       * (X_SEGMENTS + 1) + x);
+				}
+			}
+			oddRow = !oddRow;
+		}
+		indexCount = indices.size();
+
+		std::vector<float> data;
+		for (std::size_t i = 0; i < positions.size(); ++i)
+		{
+			data.push_back(positions[i].x);
+			data.push_back(positions[i].y);
+			data.push_back(positions[i].z);
+			if (uv.size() > 0)
+			{
+				data.push_back(uv[i].x);
+				data.push_back(uv[i].y);
+			}
+			if (normals.size() > 0)
+			{
+				data.push_back(normals[i].x);
+				data.push_back(normals[i].y);
+				data.push_back(normals[i].z);
+			}
+		}
+		glBindVertexArray(sphereVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+		float stride = (3 + 2 + 3) * sizeof(float);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)(5 * sizeof(float)));
+	}
+
+	glBindVertexArray(sphereVAO);
+	glDrawElements(GL_TRIANGLE_STRIP, indexCount, GL_UNSIGNED_INT, 0);
 }

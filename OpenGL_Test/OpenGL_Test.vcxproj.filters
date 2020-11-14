@@ -110,6 +110,12 @@
     <None Include="Shaders\AO Blur FS.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\PBR FS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\PBR VS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
