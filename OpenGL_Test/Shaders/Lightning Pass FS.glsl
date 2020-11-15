@@ -204,12 +204,12 @@ vec3 CalcPointLight(int lightId, vec3 normal, vec3 viewDir, vec3 diffuseColor, v
 	//clamp diffuse for HDR
 	vec3 originDiff = vec3(0.0);
 	
-	originDiff = vec3(clamp(pointLights[lightId].diffuse, vec4(0.0), vec4(1.0)));	
+	originDiff = vec3(clamp(pointLights[lightId].diffuse/300.0, vec4(0.0), vec4(1.0)));	
 
 	// комбинируем результаты
-    vec3 ambient  = vec3(pointLights[lightId].ambient)  * diffuseColor * AO;
+    vec3 ambient  = vec3(pointLights[lightId].ambient/300.0)  * diffuseColor * AO;
     vec3 diffuse  = originDiff * diff * diffuseColor * (1.0 - shadow);
-    vec3 specular = vec3(pointLights[lightId].specular) * spec * specularColor * (1.0 - shadow);
+    vec3 specular = vec3(pointLights[lightId].specular/300.0) * spec * specularColor * (1.0 - shadow);
     ambient  *= attenuation;
     diffuse  *= attenuation;
     specular *= attenuation;

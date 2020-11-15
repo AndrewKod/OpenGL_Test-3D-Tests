@@ -14,6 +14,8 @@ uniform sampler2D aoMap;
 // IBL
 uniform samplerCube irradianceMap;
 
+uniform bool bTest = false;
+
 // lights
 struct DirectionalLight {
 	//position for shadows calculations
@@ -193,8 +195,9 @@ void main()
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;	  
     vec3 irradiance = texture(irradianceMap, N).rgb;
-    vec3 diffuse      = irradiance * albedo;
-    vec3 ambient = (kD * diffuse) * ao;
+	vec3 diffuse      = irradiance * albedo;
+    //vec3 ambient = (kD * diffuse) * ao;
+	vec3 ambient = (kD * diffuse);
     // vec3 ambient = vec3(0.002);
     
     vec3 color = ambient + Lo;

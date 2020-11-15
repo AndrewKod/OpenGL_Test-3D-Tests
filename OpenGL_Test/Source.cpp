@@ -145,6 +145,7 @@ struct Settings
 
 	GLint bDeferredRendering =		false;//T excluded from settingsUBO
 	
+	GLint bPBR =					false;//R
 
 	void UpdateSettings()
 	{
@@ -1000,8 +1001,7 @@ int main()
 	float spacing = 2.5;
 
 	//IBL
-	glDepthFunc(GL_LEQUAL); // set depth function to less than AND equal for skybox depth trick.
-
+	
 	GLuint captureFBO = 0;
 	GLuint captureRBO = 0;
 	GLuint hdrTexture = 0;
@@ -1034,6 +1034,9 @@ int main()
 		// -----
 		processInput(window);
 
+		lampShader.UseProgram();
+		lampShader.SetBool("bPBR", settings.bPBR);
+
 		if (settings.bDeferredRendering)
 		{
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -1042,96 +1045,84 @@ int main()
 			UpdateMatrices(uboBlock);
 			
 			//////////////////////////////gBuffer////////////////////////////////
-			//glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+			glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
 
-			//glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-			//geomPassShader.UseProgram();		
-			//geomPassShader.SetBool("binvertUVs", true);
-			//model.Draw(geomPassShader, true, dimensions*dimensions);
-			//geomPassShader.SetBool("binvertUVs", false);
+			geomPassShader.UseProgram();		
+			geomPassShader.SetBool("binvertUVs", true);
+			model.Draw(geomPassShader, true, dimensions*dimensions);
+			geomPassShader.SetBool("binvertUVs", false);
 
-			//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-			/////////////////////////////////AO//////////////////////////////
-			//glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+			///////////////////////////////AO//////////////////////////////
+			glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
 
-			//glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-			//Draw_AO_Quad(AO_Shader, DR_VAO,
-			//	gPosition, gModelNormal,
-			//	gTangent, gBitangent,
-			//	noiseTexture, ssaoKernel);
+			Draw_AO_Quad(AO_Shader, DR_VAO,
+				gPosition, gModelNormal,
+				gTangent, gBitangent,
+				noiseTexture, ssaoKernel);
 
-			//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-			//glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+			glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
 
-			//glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-			//Draw_AO_Blur_Quad(AO_Blur_Shader, DR_VAO,
-			//	ssaoColorBuffer);
+			Draw_AO_Blur_Quad(AO_Blur_Shader, DR_VAO,
+				ssaoColorBuffer);
 
-			//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
-			/////////////////////////SCENE////////////////////////
+			///////////////////////SCENE////////////////////////
 
-			//Draw_DR_Quad(lightPassShader, DR_VAO,
-			//	gPosition, gModelNormal, gMaterialNormal,
-			//	gAlbedoSpec, gTangent, gBitangent, ssaoColorBuffer);
+			Draw_DR_Quad(lightPassShader, DR_VAO,
+				gPosition, gModelNormal, gMaterialNormal,
+				gAlbedoSpec, gTangent, gBitangent, ssaoColorBuffer);
 
-			////copy depth buffer from gBuffer into default frame buffer
-			//glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
-			//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // буфер глубины по-умолчанию
-			//glBlitFramebuffer(
-			//	0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST
-			//);
-			//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			//copy depth buffer from gBuffer into default frame buffer
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // буфер глубины по-умолчанию
+			glBlitFramebuffer(
+				0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST
+			);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			SetPointLights(pointLights_DR);
+			UpdatePointLights_DR(pointLights_DR, pointLightsModelMatrices_DR, lampShader, cubeVAO);			
+		}
+		else if (settings.bPBR)
+		{
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+			UpdateMatrices(uboBlock);
 
 			SetPointLights(pointLights_DR);
 			UpdatePointLights_DR(pointLights_DR, pointLightsModelMatrices_DR, lampShader, cubeVAO);
 
-			//lightPassShader.UseProgram();
-			//for (int i = 0; i < NUM_POINT_LIGHTS; i++)
-			//{
-			//	char num[3];
-			//	_itoa_s(i, num, 10);
-			//	lightPassShader.SetVec4(std::string("positions[") + num + "]", lights.pointLights[i].position);
-			//}
-
 			///////////////////////////////////PBR/////////////////////////////////
 			Render_PBR_Spheres(PBR_Shader,
-				albedo, normal, metallic, roughness, ao, irradianceMap,
+				albedo, normal, metallic, roughness, ao,
+				irradianceMap,
 				nrRows, nrColumns, spacing);
 
 			// render skybox (render as last to prevent overdraw)
 			glDepthFunc(GL_LEQUAL);
-			glDepthMask(GL_FALSE);
-			glFrontFace(GL_CW);
-			backgroundShader.UseProgram();			
+			backgroundShader.UseProgram();
 			glActiveTexture(GL_TEXTURE31);
-			//glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
+			glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+			//glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
 			DrawSkybox_IBL();
-			glDepthMask(GL_TRUE);
-			glFrontFace(GL_CCW);
 			glDepthFunc(GL_LESS);
 
-			/*glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
-
-			render Skybox
-			glDepthFunc(GL_LEQUAL);
-			glDepthMask(GL_FALSE);
-			glFrontFace(GL_CW);
-			glm::mat4 skyboxView = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-			DrawSkybox(skyboxShader, skyboxVAO, cubemapTexture, skyboxView, projection);
-			glDepthMask(GL_TRUE);
-			glFrontFace(GL_CCW);
-			glDepthFunc(GL_LESS);*/
 		}
 		else
 		{
@@ -1702,8 +1693,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_T && action == GLFW_PRESS)
 	{
 		settings.bDeferredRendering = !settings.bDeferredRendering;
-		
+		settings.bPBR = false;
+
 		settings.UpdateSettings();
+	}
+
+	if (key == GLFW_KEY_R && action == GLFW_PRESS)
+	{
+		settings.bPBR = !settings.bPBR;
+		settings.bDeferredRendering = false;
 	}
 }
 
@@ -2235,8 +2233,8 @@ void DrawSkybox(Shader & shader, GLuint VAO, GLuint texture, const glm::mat4& vi
 	shader.UseProgram();
 	// ... задание видовой и проекционной матриц
 
-	shader.SetMat4("view", view);
-	shader.SetMat4("projection", projection);
+	//shader.SetMat4("view", view);
+	//shader.SetMat4("projection", projection);
 
 	glBindVertexArray(VAO);
 
@@ -3680,6 +3678,9 @@ void Render_PBR_Spheres(Shader& PBR_Shader,
 	GLint nrRows, GLint nrColumns, GLfloat spacing )
 {
 	PBR_Shader.UseProgram();	
+
+	PBR_Shader.SetBool("bTest", settings.bPBR);
+
 	PBR_Shader.SetVec3("cameraPos", camera.Position);
 
 	glActiveTexture(GL_TEXTURE0);
@@ -3692,7 +3693,8 @@ void Render_PBR_Spheres(Shader& PBR_Shader,
 	glBindTexture(GL_TEXTURE_2D, roughness);
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, ao);
-	glActiveTexture(GL_TEXTURE5);
+
+	glActiveTexture(GL_TEXTURE31);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
 
 	// render rows*column number of spheres with material properties defined by textures (they all have the same material properties)
@@ -4002,7 +4004,7 @@ void DrawSkybox_IBL()
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindVertexArray(0);
+		glBindVertexArray(0);		
 	}
 	// render Cube
 	glBindVertexArray(boxVAO);
