@@ -131,6 +131,15 @@
     <None Include="Shaders\Cubemap VS.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\BRDF FS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\BRDF VS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Prefilter FS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">

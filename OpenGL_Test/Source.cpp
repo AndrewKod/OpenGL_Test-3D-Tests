@@ -461,18 +461,20 @@ void Draw_AO_Blur_Quad(Shader & AO_Shader, GLuint AO_VAO,
 /////////////////////////////////////////PBR/////////////////////////////////////////
 void Render_PBR_Spheres(Shader& PBR_Shader,
 	GLuint& albedo, GLuint& normal, GLuint& metallic, GLuint& roughness, GLuint& ao,
-	GLuint& irradianceMap,
+	GLuint& irradianceMap, GLuint& prefilterMap, GLuint& brdfLUTTexture,
 	GLint nrRows, GLint nrColumns, GLfloat spacing);
 
 void renderSphere();
 
 void Setup_IBL(Shader& PBR_Shader, Shader& equirectangularToCubemapShader,
 	Shader& irradianceShader, Shader& backgroundShader,
+	Shader& prefilterShader, Shader& brdfShader,
 	GLuint& captureFBO, GLuint& captureRBO,
-	GLuint& hdrTexture, GLuint& envCubemap, GLuint& irradianceMap, GLuint& skyboxVAO);
+	GLuint& hdrTexture, GLuint& envCubemap, GLuint& irradianceMap,
+	GLuint& prefilterMap, GLuint& brdfLUTTexture);
 
 void DrawSkybox_IBL();
-
+void RenderQuad();
 
 int main()
 {
@@ -578,6 +580,9 @@ int main()
 		"Shaders/Equirectangular To Cubemap FS.glsl");
 	Shader irradianceShader("Shaders/Cubemap VS.glsl", "Shaders/Irradiance Convolution FS.glsl");
 	Shader backgroundShader("Shaders/Background VS.glsl", "Shaders/Background FS.glsl");
+	Shader prefilterShader("Shaders/Cubemap VS.glsl", "Shaders/Prefilter FS.glsl");
+	Shader brdfShader("Shaders/BRDF VS.glsl", "Shaders/BRDF FS.glsl");
+
 	//////////////////////////////UNIFORM BUFFER//////////////////////////////
 	//2x matrices 4x4
 	unsigned int uboBlock;
@@ -611,6 +616,7 @@ int main()
 	equirectangularToCubemapShader.BindUniformBuffer("Matrices", 0);
 	irradianceShader.BindUniformBuffer("Matrices", 0);
 	backgroundShader.BindUniformBuffer("Matrices", 0);
+	prefilterShader.BindUniformBuffer("Matrices", 0);
 	/////////////////////////////////////SETTINGS UNIFORM BUFFER////////////////////////////////////	
 	glGenBuffers(1, &settingsUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, settingsUBO);
@@ -982,7 +988,11 @@ int main()
 	PBR_Shader.SetInt("metallicMap", 2);
 	PBR_Shader.SetInt("roughnessMap", 3);
 	PBR_Shader.SetInt("aoMap", 4);
+	PBR_Shader.SetInt("brdfLUT", 5);
+
+	PBR_Shader.SetInt("prefilterMap", 30);
 	PBR_Shader.SetInt("irradianceMap", 31);
+	
 
 	backgroundShader.UseProgram();
 	backgroundShader.SetInt("environmentMap", 31);
@@ -1007,11 +1017,15 @@ int main()
 	GLuint hdrTexture = 0;
 	GLuint envCubemap = 0;
 	GLuint irradianceMap = 0;
+	GLuint prefilterMap = 0;
+	GLuint brdfLUTTexture = 0;	
 
 	Setup_IBL(PBR_Shader, equirectangularToCubemapShader,
 		irradianceShader, backgroundShader,
+		prefilterShader, brdfShader,
 		captureFBO, captureRBO,
-		hdrTexture, envCubemap, irradianceMap, skyboxVAO);
+		hdrTexture, envCubemap, irradianceMap, 
+		prefilterMap, brdfLUTTexture);
 
 	// before rendering, configure the viewport to the original framebuffer's screen dimensions
 	int scrWidth, scrHeight;
@@ -1111,7 +1125,7 @@ int main()
 			///////////////////////////////////PBR/////////////////////////////////
 			Render_PBR_Spheres(PBR_Shader,
 				albedo, normal, metallic, roughness, ao,
-				irradianceMap,
+				irradianceMap, prefilterMap, brdfLUTTexture,
 				nrRows, nrColumns, spacing);
 
 			// render skybox (render as last to prevent overdraw)
@@ -1120,8 +1134,13 @@ int main()
 			glActiveTexture(GL_TEXTURE31);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 			//glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
+			//glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
 			DrawSkybox_IBL();
 			glDepthFunc(GL_LESS);
+
+			// render BRDF map to screen
+			//brdfShader.UseProgram();
+			//RenderQuad();
 
 		}
 		else
@@ -3674,7 +3693,7 @@ void Draw_AO_Blur_Quad(Shader & AO_Shader, GLuint AO_VAO,
 
 void Render_PBR_Spheres(Shader& PBR_Shader, 
 	GLuint& albedo, GLuint& normal, GLuint& metallic, GLuint& roughness, GLuint& ao,
-	GLuint& irradianceMap,
+	GLuint& irradianceMap, GLuint& prefilterMap, GLuint& brdfLUTTexture,
 	GLint nrRows, GLint nrColumns, GLfloat spacing )
 {
 	PBR_Shader.UseProgram();	
@@ -3690,12 +3709,22 @@ void Render_PBR_Spheres(Shader& PBR_Shader,
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, metallic);
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, roughness);
+	glBindTexture(GL_TEXTURE_2D, roughness);	
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, ao);
 
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+
+	
+
+	glActiveTexture(GL_TEXTURE30);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
 	glActiveTexture(GL_TEXTURE31);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+	
+
+	
 
 	// render rows*column number of spheres with material properties defined by textures (they all have the same material properties)
 	glm::mat4 model = glm::mat4(1.0f);
@@ -3810,12 +3839,15 @@ void renderSphere()
 
 	glBindVertexArray(sphereVAO);
 	glDrawElements(GL_TRIANGLE_STRIP, indexCount, GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
 }
 
 void Setup_IBL(Shader& PBR_Shader, Shader& equirectangularToCubemapShader,
 	Shader& irradianceShader, Shader& backgroundShader,
+	Shader& prefilterShader, Shader& brdfShader,
 	GLuint& captureFBO, GLuint& captureRBO,
-	GLuint& hdrTexture, GLuint& envCubemap, GLuint& irradianceMap, GLuint& skyboxVAO)
+	GLuint& hdrTexture, GLuint& envCubemap, GLuint& irradianceMap,
+	GLuint& prefilterMap, GLuint& brdfLUTTexture)
 {
 	// pbr: setup framebuffer
 	// ----------------------
@@ -3861,7 +3893,7 @@ void Setup_IBL(Shader& PBR_Shader, Shader& equirectangularToCubemapShader,
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // enable pre-filter mipmap sampling (combatting visible dots artifact)
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	// pbr: set up projection and view matrices for capturing data onto the 6 cubemap face directions
@@ -3897,6 +3929,10 @@ void Setup_IBL(Shader& PBR_Shader, Shader& equirectangularToCubemapShader,
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	// then let OpenGL generate mipmaps from first mip face (combatting visible dots artifact)
+	glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
 	// pbr: create an irradiance cubemap, and re-scale capture FBO to irradiance scale.
 	// --------------------------------------------------------------------------------
 	glGenTextures(1, &irradianceMap);
@@ -3929,12 +3965,86 @@ void Setup_IBL(Shader& PBR_Shader, Shader& equirectangularToCubemapShader,
 	{
 		irradianceShader.SetMat4("view", captureViews[i]);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradianceMap, 0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 		DrawSkybox_IBL();
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
+
+	// pbr: create a pre-filter cubemap, and re-scale capture FBO to pre-filter scale.
+	// --------------------------------------------------------------------------------
+	glGenTextures(1, &prefilterMap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+	for (unsigned int i = 0; i < 6; ++i)
+	{
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 128, 128, 0, GL_RGB, GL_FLOAT, nullptr);
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // be sure to set minification filter to mip_linear 
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// generate mipmaps for the cubemap so OpenGL automatically allocates the required memory.
+	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+	// pbr: run a quasi monte-carlo simulation on the environment lighting to create a prefilter (cube)map.
+	// ----------------------------------------------------------------------------------------------------
+	prefilterShader.UseProgram();
+	prefilterShader.SetInt("environmentMap", 31);
+	prefilterShader.SetMat4("projection", captureProjection);
+	glActiveTexture(GL_TEXTURE31);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+	unsigned int maxMipLevels = 5;
+	for (unsigned int mip = 0; mip < maxMipLevels; ++mip)
+	{
+		// reisze framebuffer according to mip-level size.
+		unsigned int mipWidth = 128 * std::pow(0.5, mip);
+		unsigned int mipHeight = 128 * std::pow(0.5, mip);
+		glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth, mipHeight);
+		glViewport(0, 0, mipWidth, mipHeight);
+
+		float roughness = (float)mip / (float)(maxMipLevels - 1);
+		prefilterShader.SetFloat("roughness", roughness);
+		for (unsigned int i = 0; i < 6; ++i)
+		{
+			prefilterShader.SetMat4("view", captureViews[i]);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilterMap, mip);
+
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+			DrawSkybox_IBL();
+		}
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// pbr: generate a 2D LUT from the BRDF equations used.
+	// ----------------------------------------------------
+	glGenTextures(1, &brdfLUTTexture);
+
+	// pre-allocate enough memory for the LUT texture.
+	glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
+	// be sure to set wrapping mode to GL_CLAMP_TO_EDGE
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// then re-configure capture framebuffer object and render screen-space quad with BRDF shader.
+	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 512, 512);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, brdfLUTTexture, 0);
+
+	glViewport(0, 0, 512, 512);
+	brdfShader.UseProgram();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	RenderQuad();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 }
 
 
@@ -4009,5 +4119,36 @@ void DrawSkybox_IBL()
 	// render Cube
 	glBindVertexArray(boxVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glBindVertexArray(0);
+}
+
+// renderQuad() renders a 1x1 XY quad in NDC
+// -----------------------------------------
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void RenderQuad()
+{
+	if (quadVAO == 0)
+	{
+		float quadVertices[] = {
+			// positions        // texture Coords
+			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,			 
+			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		};
+		// setup plane VAO
+		glGenVertexArrays(1, &quadVAO);
+		glGenBuffers(1, &quadVBO);
+		glBindVertexArray(quadVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	}
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
 }

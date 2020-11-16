@@ -145,6 +145,8 @@
     <None Include="Shaders\Background VS.glsl" />
     <None Include="Shaders\Blur FS.glsl" />
     <None Include="Shaders\Blur VS.glsl" />
+    <None Include="Shaders\BRDF FS.glsl" />
+    <None Include="Shaders\BRDF VS.glsl" />
     <None Include="Shaders\Cubemap Fragment Shader.glsl" />
     <None Include="Shaders\Cubemap Vertex Shader.glsl" />
     <None Include="Shaders\Cubemap VS.glsl" />
@@ -167,6 +169,7 @@
     <None Include="Shaders\Point Light Depth FS.glsl" />
     <None Include="Shaders\Point Light Depth GS.glsl" />
     <None Include="Shaders\Point Light Depth VS.glsl" />
+    <None Include="Shaders\Prefilter FS.glsl" />
     <None Include="Shaders\Single Color FS.glsl" />
     <None Include="Shaders\Single Color VS.glsl" />
     <None Include="Shaders\Vertex Shader Model.glsl" />
